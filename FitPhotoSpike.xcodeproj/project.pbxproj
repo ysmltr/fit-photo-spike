@@ -1,0 +1,532 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		AA0000000000000000000007 = {
+			isa = "PBXGroup";
+			children = (
+				"AF25D388DFA159ABBA835952",
+			);
+			path = "AppIntents";
+			sourceTree = "<group>";
+		};
+		D7D9B3F0450C52A0D4C64907 = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "FitPhotoSpikeApp.swift";
+			sourceTree = "<group>";
+		};
+		8191D8A2CAD4A3CDDAF54967 = {
+			isa = "PBXBuildFile";
+			fileRef = "D7D9B3F0450C52A0D4C64907";
+		};
+		3F912F131C250314848570FF = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "text.plist.xml";
+			path = "Info.plist";
+			sourceTree = "<group>";
+		};
+		2BD7D6C9E1077A20D1A9A30F = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "text.xml";
+			path = "PrivacyInfo.xcprivacy";
+			sourceTree = "<group>";
+		};
+		2662447B25E647D25D0012C3 = {
+			isa = "PBXBuildFile";
+			fileRef = "2BD7D6C9E1077A20D1A9A30F";
+		};
+		122FDCC92684B9C82011C8D2 = {
+			isa = "PBXGroup";
+			children = (
+				"D7D9B3F0450C52A0D4C64907",
+				"3F912F131C250314848570FF",
+				"2BD7D6C9E1077A20D1A9A30F",
+			);
+			path = "App";
+			sourceTree = "<group>";
+		};
+		CDB480DB475552E206A18948 = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "CanvasGeometry.swift";
+			sourceTree = "<group>";
+		};
+		829C11D8A2A4BB5B369D5327 = {
+			isa = "PBXBuildFile";
+			fileRef = "CDB480DB475552E206A18948";
+		};
+		9F27E9452A8EDB34632E0A28 = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "ImageRenderer.swift";
+			sourceTree = "<group>";
+		};
+		2A0407726B5B9B8BB0845338 = {
+			isa = "PBXBuildFile";
+			fileRef = "9F27E9452A8EDB34632E0A28";
+		};
+		61DC165F202C885F4D4B01B6 = {
+			isa = "PBXGroup";
+			children = (
+				"CDB480DB475552E206A18948",
+				"9F27E9452A8EDB34632E0A28",
+				"D136159631848BC0B2A65229",
+			);
+			path = "ImageProcessing";
+			sourceTree = "<group>";
+		};
+		5CAA50544E37D651D86E4B86 = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "ContentView.swift";
+			sourceTree = "<group>";
+		};
+		3ECE8A4AFEE649306556B079 = {
+			isa = "PBXBuildFile";
+			fileRef = "5CAA50544E37D651D86E4B86";
+		};
+		577159CFD869163D7A997466 = {
+			isa = "PBXGroup";
+			children = (
+				"5CAA50544E37D651D86E4B86",
+			);
+			path = "Views";
+			sourceTree = "<group>";
+		};
+		CAB5B32DE164CA616A7ACC15 = {
+			isa = "PBXGroup";
+			children = (
+				"122FDCC92684B9C82011C8D2",
+				"61DC165F202C885F4D4B01B6",
+				"577159CFD869163D7A997466",
+				"AA0000000000000000000007",
+			);
+			path = "FitPhotoSpike";
+			sourceTree = "<group>";
+		};
+		A47CEE7ECE13E8D93B097303 = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "CanvasGeometryTests.swift";
+			sourceTree = "<group>";
+		};
+		DF82CEF937AD7D1A450C3CB8 = {
+			isa = "PBXBuildFile";
+			fileRef = "A47CEE7ECE13E8D93B097303";
+		};
+		BF3686D054740BD1BB8408AF = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "ImageRendererTests.swift";
+			sourceTree = "<group>";
+		};
+		331C5946716BD45C2F5E8D8F = {
+			isa = "PBXBuildFile";
+			fileRef = "BF3686D054740BD1BB8408AF";
+		};
+		E05C5E314CF0B96E241F0E07 = {
+			isa = "PBXGroup";
+			children = (
+				"A47CEE7ECE13E8D93B097303",
+				"BF3686D054740BD1BB8408AF",
+				"DF01D48B37A20E86CCC54E8A",
+				"DDFAD1C06076607BF2B79A4C",
+			);
+			path = "FitPhotoSpikeTests";
+			sourceTree = "<group>";
+		};
+		DC06D6BFE504B9DFD668991F = {
+			isa = "PBXFileReference";
+			explicitFileType = "wrapper.application";
+			includeInIndex = 0;
+			path = "FitPhotoSpike.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		4DBC6C3F6C1AB9AC44D37FF9 = {
+			isa = "PBXFileReference";
+			explicitFileType = "wrapper.cfbundle";
+			includeInIndex = 0;
+			path = "FitPhotoSpikeTests.xctest";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		EC318C21FAECDB5874C4DE37 = {
+			isa = "PBXGroup";
+			children = (
+				"DC06D6BFE504B9DFD668991F",
+				"4DBC6C3F6C1AB9AC44D37FF9",
+			);
+			name = "Products";
+			sourceTree = "<group>";
+		};
+		164CCC12A382C4149D589A2A = {
+			isa = "PBXGroup";
+			children = (
+				"CAB5B32DE164CA616A7ACC15",
+				"E05C5E314CF0B96E241F0E07",
+				"EC318C21FAECDB5874C4DE37",
+			);
+			sourceTree = "<group>";
+		};
+		7053037E3B7583DC4BA97679 = {
+			isa = "PBXSourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+				"8191D8A2CAD4A3CDDAF54967",
+				"829C11D8A2A4BB5B369D5327",
+				"2A0407726B5B9B8BB0845338",
+				"3ECE8A4AFEE649306556B079",
+				"CE071B5AA64C27EF147122AA",
+				"8F382B38B192D7C9795A2C82",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9FF1E31E7B07F848619FB073 = {
+			isa = "PBXFrameworksBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F49F7AF7150FDBC17D89E7EE = {
+			isa = "PBXResourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+				"2662447B25E647D25D0012C3",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF5513190719EE6457D04784 = {
+			isa = "PBXSourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+				"DF82CEF937AD7D1A450C3CB8",
+				"331C5946716BD45C2F5E8D8F",
+				"7C8E648B3B7407F2941B5502",
+				"6D88AB9623E341E3EC2559D8",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8D82AED735BDF2A94E3DD5FD = {
+			isa = "PBXFrameworksBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E83CE2EDCA42621BE7A6F025 = {
+			isa = "PBXResourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9184E1CE6024F0A9FEF95DDB = {
+			isa = "XCBuildConfiguration";
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+				CLANG_ENABLE_MODULES = "YES";
+				CLANG_ENABLE_OBJC_ARC = "YES";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = "YES";
+				CLANG_WARN_UNREACHABLE_CODE = "YES";
+				COPY_PHASE_STRIP = "NO";
+				ENABLE_STRICT_OBJC_MSGSEND = "YES";
+				GCC_C_LANGUAGE_STANDARD = "gnu17";
+				GCC_NO_COMMON_BLOCKS = "YES";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = "YES";
+				GCC_WARN_ABOUT_RETURN_TYPE = "YES_ERROR";
+				GCC_WARN_UNINITIALIZED_AUTOS = "YES_AGGRESSIVE";
+				GCC_WARN_UNUSED_FUNCTION = "YES";
+				GCC_WARN_UNUSED_VARIABLE = "YES";
+				IPHONEOS_DEPLOYMENT_TARGET = "18.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				DEBUG_INFORMATION_FORMAT = "dwarf";
+				ENABLE_TESTABILITY = "YES";
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				ONLY_ACTIVE_ARCH = "YES";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+					"DEBUG",
+					"$(inherited)",
+				);
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = "Debug";
+		};
+		DB68EF61D13E4314CA7817B8 = {
+			isa = "XCBuildConfiguration";
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = "NO";
+				CLANG_ENABLE_MODULES = "YES";
+				CLANG_ENABLE_OBJC_ARC = "YES";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = "YES";
+				CLANG_WARN_UNREACHABLE_CODE = "YES";
+				COPY_PHASE_STRIP = "NO";
+				ENABLE_STRICT_OBJC_MSGSEND = "YES";
+				GCC_C_LANGUAGE_STANDARD = "gnu17";
+				GCC_NO_COMMON_BLOCKS = "YES";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = "YES";
+				GCC_WARN_ABOUT_RETURN_TYPE = "YES_ERROR";
+				GCC_WARN_UNINITIALIZED_AUTOS = "YES_AGGRESSIVE";
+				GCC_WARN_UNUSED_FUNCTION = "YES";
+				GCC_WARN_UNUSED_VARIABLE = "YES";
+				IPHONEOS_DEPLOYMENT_TARGET = "18.0";
+				SDKROOT = "iphoneos";
+				SWIFT_VERSION = "5.0";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_COMPILATION_MODE = "wholemodule";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = "YES";
+			};
+			name = "Release";
+		};
+		7872220A24670EA3934EFB5B = {
+			isa = "XCConfigurationList";
+			buildConfigurations = (
+				"9184E1CE6024F0A9FEF95DDB",
+				"DB68EF61D13E4314CA7817B8",
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		A0DC60AA0A0C68EE1B420A62 = {
+			isa = "XCBuildConfiguration";
+			buildSettings = {
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = "NO";
+				INFOPLIST_FILE = "FitPhotoSpike/App/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = "0.1.0";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.FitPhotoSpike";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = "NO";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = "NO";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				ENABLE_PREVIEWS = "YES";
+			};
+			name = "Debug";
+		};
+		CCA16C929662775B39DA816B = {
+			isa = "XCBuildConfiguration";
+			buildSettings = {
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = "NO";
+				INFOPLIST_FILE = "FitPhotoSpike/App/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = "0.1.0";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.FitPhotoSpike";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = "NO";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = "NO";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Release";
+		};
+		E485D721CB5B66699258BD42 = {
+			isa = "XCConfigurationList";
+			buildConfigurations = (
+				"A0DC60AA0A0C68EE1B420A62",
+				"CCA16C929662775B39DA816B",
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		E2FFED1CBCBB4A722258187D = {
+			isa = "XCBuildConfiguration";
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = "YES";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = "0.1.0";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.FitPhotoSpikeTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = "NO";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FitPhotoSpike.app/FitPhotoSpike";
+				TEST_TARGET_NAME = "FitPhotoSpike";
+			};
+			name = "Debug";
+		};
+		C66BB17F1820BFF82048795D = {
+			isa = "XCBuildConfiguration";
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = "Automatic";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = "YES";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = "0.1.0";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.FitPhotoSpikeTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = "NO";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FitPhotoSpike.app/FitPhotoSpike";
+				TEST_TARGET_NAME = "FitPhotoSpike";
+			};
+			name = "Release";
+		};
+		56A5FDF0385157F2B4DB709C = {
+			isa = "XCConfigurationList";
+			buildConfigurations = (
+				"E2FFED1CBCBB4A722258187D",
+				"C66BB17F1820BFF82048795D",
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		C3B7FB3CEB299F9E2071511B = {
+			isa = "PBXNativeTarget";
+			buildConfigurationList = "E485D721CB5B66699258BD42";
+			buildPhases = (
+				"7053037E3B7583DC4BA97679",
+				"9FF1E31E7B07F848619FB073",
+				"F49F7AF7150FDBC17D89E7EE",
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "FitPhotoSpike";
+			productName = "FitPhotoSpike";
+			productReference = "DC06D6BFE504B9DFD668991F";
+			productType = "com.apple.product-type.application";
+		};
+		2787A3613175508B47BC6CEF = {
+			isa = "PBXContainerItemProxy";
+			containerPortal = "0F8369B90662C6531368E2A7";
+			proxyType = 1;
+			remoteGlobalIDString = "C3B7FB3CEB299F9E2071511B";
+			remoteInfo = "FitPhotoSpike";
+		};
+		281622496A31F1980B5920EA = {
+			isa = "PBXTargetDependency";
+			target = "C3B7FB3CEB299F9E2071511B";
+			targetProxy = "2787A3613175508B47BC6CEF";
+		};
+		C51C43F50AEFAA90A2251CAB = {
+			isa = "PBXNativeTarget";
+			buildConfigurationList = "56A5FDF0385157F2B4DB709C";
+			buildPhases = (
+				"EF5513190719EE6457D04784",
+				"8D82AED735BDF2A94E3DD5FD",
+				"E83CE2EDCA42621BE7A6F025",
+			);
+			buildRules = (
+			);
+			dependencies = (
+				"281622496A31F1980B5920EA",
+			);
+			name = "FitPhotoSpikeTests";
+			productName = "FitPhotoSpikeTests";
+			productReference = "4DBC6C3F6C1AB9AC44D37FF9";
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		0F8369B90662C6531368E2A7 = {
+			isa = "PBXProject";
+			attributes = {
+				BuildIndependentTargetsInParallel = "YES";
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					C3B7FB3CEB299F9E2071511B = {
+						CreatedOnToolsVersion = "16.0";
+					};
+					C51C43F50AEFAA90A2251CAB = {
+						CreatedOnToolsVersion = "16.0";
+						TestTargetID = "C3B7FB3CEB299F9E2071511B";
+					};
+				};
+			};
+			buildConfigurationList = "7872220A24670EA3934EFB5B";
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = "en";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				"en",
+				"Base",
+			);
+			mainGroup = "164CCC12A382C4149D589A2A";
+			productRefGroup = "EC318C21FAECDB5874C4DE37";
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				"C3B7FB3CEB299F9E2071511B",
+				"C51C43F50AEFAA90A2251CAB",
+			);
+		};
+		D136159631848BC0B2A65229 = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "TemporaryImageProcessor.swift";
+			sourceTree = "<group>";
+		};
+		CE071B5AA64C27EF147122AA = {
+			isa = "PBXBuildFile";
+			fileRef = "D136159631848BC0B2A65229";
+		};
+		AF25D388DFA159ABBA835952 = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "FitPhotosIntent.swift";
+			sourceTree = "<group>";
+		};
+		8F382B38B192D7C9795A2C82 = {
+			isa = "PBXBuildFile";
+			fileRef = "AF25D388DFA159ABBA835952";
+		};
+		DF01D48B37A20E86CCC54E8A = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "TemporaryImageProcessorTests.swift";
+			sourceTree = "<group>";
+		};
+		7C8E648B3B7407F2941B5502 = {
+			isa = "PBXBuildFile";
+			fileRef = "DF01D48B37A20E86CCC54E8A";
+		};
+		DDFAD1C06076607BF2B79A4C = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "FitPhotosIntentTests.swift";
+			sourceTree = "<group>";
+		};
+		6D88AB9623E341E3EC2559D8 = {
+			isa = "PBXBuildFile";
+			fileRef = "DDFAD1C06076607BF2B79A4C";
+		};
+	};
+	rootObject = "0F8369B90662C6531368E2A7";
+}

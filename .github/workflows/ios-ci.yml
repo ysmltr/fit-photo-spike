@@ -1,0 +1,63 @@
+name: iOS Simulator validation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Xcode 26.6 / iOS Simulator
+    # Verified against actions/runner-images on 2026-09-10. This is the
+    # standard arm64 runner, not a -large / -xlarge runner label.
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      FITPHOTO_EXPECTED_XCODE_VERSION: '26.6'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build app, boot Simulator, and run every test
+        run: |
+          mkdir -p ci-artifacts
+          bash Scripts/validate-on-mac.sh 2>&1 | tee ci-artifacts/driver.log
+
+      - name: Preserve logs and Xcode results (including on failure)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ci-artifacts/
+            ValidationRuns/
+            !ValidationRuns/**/DerivedData/**
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: State the validation boundary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          This job builds the native app and runs the entire shared scheme's test suite.
+          The artifact contains logs, toolchain/runtime details, and `.xcresult` when produced.
+          A successful job validates only Stage 1. Real iPhone checks are still required
+          for Shortcuts discovery, multi-file Share delivery, completion cleanup, and memory.
+          The production app returns temporary files and has no Photos library access.
+          AppIntentsTesting requires the Xcode 27 / iOS 27 beta toolchain and is unsupported
+          by this pinned stable Xcode 26.6 job; ordinary intent XCTest coverage still runs.
+          Stage 2 remains pending in PHYSICAL_DEVICE_TEST.md.
+          SUMMARY
