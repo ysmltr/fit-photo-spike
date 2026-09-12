@@ -1,0 +1,72 @@
+name: Unsigned iPhone IPA
+
+# Separate, opt-in device preparation. The Simulator workflow is unchanged.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-device-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unsigned-device-ipa:
+    name: Build and verify unsigned iPhoneOS IPA
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      FITPHOTO_EXPECTED_XCODE_VERSION: '26.6'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build device app, verify arm64 and App Intents, package IPA
+        run: |
+          set -euo pipefail
+          mkdir -p device-ci-artifacts
+          bash Scripts/build-unsigned-device.sh 2>&1 | tee device-ci-artifacts/driver.log
+
+      - name: Downloadable unsigned IPA and verification report
+        uses: actions/upload-artifact@v7
+        with:
+          name: FitPhotoSpike-unsigned-ipa
+          path: |
+            DeviceBuildRuns/*/Artifacts/FitPhotoSpike-unsigned.ipa
+            DeviceBuildRuns/*/Artifacts/FitPhotoSpike-unsigned.ipa.sha256
+            DeviceBuildRuns/*/Artifacts/device-build-verification.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Preserve device build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-device-build-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            device-ci-artifacts/
+            DeviceBuildRuns/
+            !DeviceBuildRuns/**/DerivedData/**
+            !DeviceBuildRuns/**/Packaging/**
+            !DeviceBuildRuns/**/Artifacts/**
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: State physical test boundary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          This separate job prepares an unsigned physical-device IPA only.
+          An uploaded IPA has passed arm64 + iPhoneOS platform checks and contains
+          generated App Intents metadata for Fit Photos to 4:5. See the JSON report.
+          No signing credentials, provisioning profiles, or App Store services are used.
+          Re-signing, installation, live Shortcuts discovery, and physical iPhone tests
+          are still pending. The existing Simulator build/test workflow is unchanged.
+          SUMMARY
