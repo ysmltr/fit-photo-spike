@@ -74,7 +74,10 @@ def walk_group(object_id, parent):
         for child in item['children']:
             walk_group(child, path)
     else:
-        assert path.is_file(), path
+        if item.get('lastKnownFileType') == 'folder.assetcatalog':
+            assert path.is_dir() and (path / 'Contents.json').is_file(), path
+        else:
+            assert path.is_file(), path
         resolved[object_id] = path
 
 walk_group(project_object['mainGroup'], root)
