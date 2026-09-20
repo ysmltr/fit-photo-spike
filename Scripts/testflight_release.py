@@ -104,6 +104,86 @@ def prepare():
     print("Private release workspace prepared.", flush=True)
 
 
+def archive_failure_summary(log_path, start, outcome, returncode=None):
+    """Return only constants and a bounded process status; never log-derived text.
+
+    Inspect at most 256 KiB from this archive invocation, excluding prior signing
+    output. Signals are diagnostic hints, not a determination of the root cause.
+    Unknown, unreadable and truncated output must never fall back to raw logging.
+    """
+    tasks = {
+        b"CodeSign": "CODE_SIGN", b"SwiftCompile": "SWIFT_COMPILE",
+        b"SwiftEmitModule": "SWIFT_MODULE", b"SwiftDriver": "SWIFT_DRIVER",
+        b"CompileC": "COMPILE_C", b"Ld": "LINK",
+        b"CompileAssetCatalog": "ASSET_CATALOG",
+        b"CompileAssetCatalogVariant": "ASSET_CATALOG",
+        b"ExtractAppIntentsMetadata": "APP_INTENTS_METADATA",
+        b"ProcessInfoPlistFile": "INFO_PLIST", b"PhaseScriptExecution": "BUILD_SCRIPT",
+    }
+    failed_tasks, hints = set(), set()
+    scope = "UNAVAILABLE"
+    try:
+        if type(start) is not int or start < 0:
+            raise ValueError()
+        with log_path.open("rb") as stream:
+            end = stream.seek(0, os.SEEK_END)
+            if end < start:
+                raise ValueError()
+            offset = max(start, end - 256 * 1024)
+            stream.seek(offset)
+            data = stream.read(end - offset)
+        scope = "FULL_INVOCATION" if offset == start else "TAIL_ONLY"
+        if offset > start:
+            data = data.partition(b"\n")[2]  # Do not classify a partial first line.
+        in_failures = False
+        for line in data.splitlines():
+            stripped = line.strip()
+            if stripped == b"The following build commands failed:":
+                in_failures = True
+                continue
+            if in_failures and line[:1] not in (b" ", b"\t"):
+                in_failures = False
+            for task, label in tasks.items():
+                if stripped == b"Command " + task + b" failed with a nonzero exit code":
+                    failed_tasks.add(label)
+                if in_failures and stripped.split(None, 1)[:1] == [task]:
+                    failed_tasks.add(label)
+            lower = stripped.lower()
+            if b"error:" in lower:
+                if any(phrase in lower for phrase in (
+                    b"requires a provisioning profile", b"no profiles for",
+                    b"no provisioning profiles", b"couldn't find any provisioning profiles",
+                )):
+                    hints.add("PROFILE_LOOKUP")
+                if b"provisioning profile" in lower and any(phrase in lower for phrase in (
+                    b"doesn't include", b"doesn't match", b"doesn't support", b"has app id",
+                )):
+                    hints.add("PROFILE_COMPATIBILITY")
+                if b"no signing certificate" in lower:
+                    hints.add("SIGNING_IDENTITY_LOOKUP")
+                if b"unable to find a destination" in lower or (
+                    b"sdk" in lower and b"cannot be located" in lower
+                ):
+                    hints.add("SDK_OR_DESTINATION")
+            if b"errsecinternalcomponent" in lower:
+                hints.add("SECURITY_TOOL_ERROR")
+            if b"user interaction is not allowed" in lower:
+                hints.add("KEYCHAIN_INTERACTION")
+            if b"no space left on device" in lower:
+                hints.add("DISK_SPACE")
+    except Exception:
+        failed_tasks.clear()
+        hints.clear()
+        scope = "UNAVAILABLE"
+    return {
+        "outcome": outcome if outcome in {"NONZERO_EXIT", "TIMEOUT", "START_OR_LOG_IO_ERROR", "SUBPROCESS_ERROR"} else "UNKNOWN",
+        "exit_code": returncode if type(returncode) is int and -255 <= returncode <= 255 else None,
+        "failed_tasks": sorted(failed_tasks),
+        "hints": sorted(hints) or ["NO_RECOGNIZED_HINT"],
+        "log_scope": scope,
+    }
+
+
 class PrivateTools:
     def __init__(self, work):
         self.work = work
@@ -114,11 +194,23 @@ class PrivateTools:
         self.env["TMPDIR"] = str(work / "tmp") + "/"
         (work / "tmp").mkdir(mode=0o700, exist_ok=True)
 
-    def run(self, code, args, *, capture=False, env=None, timeout=180):
+    def run(self, code, args, *, capture=False, env=None, timeout=180, diagnose_archive=False):
         # Command lines are never echoed: some Apple tools accept passwords only
         # as arguments. All children run on a fresh, single-job hosted runner.
+        start = None
+
+        def diagnose(outcome, returncode=None):
+            if diagnose_archive:
+                try:
+                    summary = archive_failure_summary(self.work / "private-tool.log", start, outcome, returncode)
+                    print("Archive diagnostics: " + json.dumps(summary, sort_keys=True), flush=True)
+                except Exception:
+                    pass  # Diagnostics must never mask the original archive failure.
+
         try:
             with (self.work / "private-tool.log").open("ab") as log:
+                if diagnose_archive:
+                    start = log.tell()
                 process = subprocess.Popen(
                     [str(arg) for arg in args], cwd=PROJECT,
                     env=self.env if env is None else env,
@@ -144,8 +236,17 @@ class PrivateTools:
                             pass
                         process.communicate()
                     raise
-        except (OSError, subprocess.SubprocessError):
+        except subprocess.TimeoutExpired:
+            diagnose("TIMEOUT")
             raise ReleaseError(code) from None
+        except OSError:
+            diagnose("START_OR_LOG_IO_ERROR")
+            raise ReleaseError(code) from None
+        except subprocess.SubprocessError:
+            diagnose("SUBPROCESS_ERROR")
+            raise ReleaseError(code) from None
+        if process.returncode != 0:
+            diagnose("NONZERO_EXIT", process.returncode)
         require(process.returncode == 0, code)
         return stdout if capture else b""
 
@@ -498,7 +599,7 @@ def release(work, credentials):
         "CODE_SIGN_IDENTITY=" + fingerprint, "PROVISIONING_PROFILE_SPECIFIER=" + identity.uuid,
         "CURRENT_PROJECT_VERSION=" + build,
         "OTHER_CODE_SIGN_FLAGS=--keychain " + shlex.quote(str(keychain)),
-    ], timeout=1800)
+    ], timeout=1800, diagnose_archive=True)
     verify_signed_app(tool, archive / "Products/Applications" / (SCHEME + ".app"),
                       settings, build, identity, certificate, "Archive")
     options = work / "ExportOptions.plist"
