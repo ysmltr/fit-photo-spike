@@ -290,7 +290,7 @@ def cleanup(work):
             require(type(installed) is str, "CLEANUP_PROFILE_PATH_REJECTED")
             target = Path(installed)
             require(target.parent == profile_directory()
-                    and re.fullmatch(r"[A-F0-9-]{36}\.mobileprovision", target.name)
+                    and re.fullmatch(r"[A-Fa-f0-9-]{36}\.mobileprovision", target.name)
                     and not target.is_symlink(), "CLEANUP_PROFILE_PATH_REJECTED")
             target.unlink(missing_ok=True)
         except (OSError, ReleaseError):

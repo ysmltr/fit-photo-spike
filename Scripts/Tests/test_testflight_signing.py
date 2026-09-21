@@ -235,7 +235,7 @@ class ProfileValidationTests(unittest.TestCase):
                 self.rejects(data)
         data = profile()
         data["UUID"] = PROFILE_UUID.lower()
-        self.assertEqual(self.validate(data).uuid, PROFILE_UUID)
+        self.assertEqual(self.validate(data).uuid, PROFILE_UUID.lower())
 
     def test_diagnostic_never_includes_untrusted_profile_values(self):
         marker = "NEVER-PRINT-THIS-PRIVATE-INPUT"

@@ -67,7 +67,9 @@ def _canonical_uuid(value):
         raise SigningValidationError("Profile UUID is invalid.") from None
     _require(str(parsed) == value.lower() and parsed.int != 0,
              "Profile UUID is invalid.")
-    return str(parsed).upper()
+    # Keep the validated source spelling for Xcode lookup and export selection.
+    # Do not rewrite an identifier supplied by the signed provisioning profile.
+    return value
 
 
 def _identifiers(profile, bundle_id, expected_team):
