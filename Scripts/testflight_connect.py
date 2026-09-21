@@ -252,8 +252,8 @@ class ConnectClient:
             }, "builds")
             versions.extend(build["attributes"].get("version") for build in builds)
         # Include uploads not yet represented by a processed Build resource.
-        # No processing-state filters: rejected/failed uploads may still consume
-        # their build number. Endpoint failure stops the release, never falls back.
+        # Apple permits reusing a FAILED upload's build number. Keep all other
+        # states conservative. Endpoint failure stops the release, never falls back.
         uploads = self._collection("/v1/apps/" + app_id + "/buildUploads", {
             "filter[cfBundleShortVersionString]": marketing_version,
             "filter[platform]": "IOS", "limit": "200",
@@ -263,6 +263,10 @@ class ConnectClient:
             if (attributes.get("cfBundleShortVersionString") != marketing_version
                     or attributes.get("platform") != "IOS"):
                 raise ConnectError("ASC_UPLOAD_MISMATCH")
+            state = attributes.get("state")
+            if isinstance(state, dict) and state.get("state") == "FAILED":
+                parse_build_number(attributes.get("cfBundleVersion"))
+                continue
             versions.append(attributes.get("cfBundleVersion"))
         for version in versions:
             parse_build_number(version)
