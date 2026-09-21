@@ -552,7 +552,7 @@ def report_build_conflict(categories):
     safe = sorted({value for value in categories
                    if type(value) is str and value in BUILD_CONFLICT_CATEGORIES})
     print("BUILD_AVAILABILITY_DIAGNOSTIC " + json.dumps({
-        "phase": "POST_APPLE_VALIDATION", "outcome": "CONFLICT",
+        "phase": "PRE_APPLE_VALIDATION", "outcome": "CONFLICT",
         "categories": safe or ["UNCLASSIFIED_CONFLICT"],
     }, separators=(",", ":")), flush=True)
 
@@ -630,11 +630,13 @@ def release(work, credentials):
     upload_env["API_PRIVATE_KEYS_DIR"] = str(key_folder)
     common = ["-t", "ios", "-f", ipa, "--apiKey", key_id,
               "--apiIssuer", issuer, "--output-format", "json"]
+    # Preflight before contacting Apple's validator; this query reserves nothing.
+    # Apple validation/upload remain authoritative for conflicts arising later.
+    client.assert_build_still_available(bundle, marketing, build,
+                                        report_conflict=report_build_conflict)
     print("Validating signed IPA with Apple upload tooling.", flush=True)
     apple_command(tool, "APPLE_IPA_VALIDATION_FAILED", ["xcrun", "altool", "--validate-app", *common],
                   env=upload_env, timeout=600)
-    client.assert_build_still_available(bundle, marketing, build,
-                                        report_conflict=report_build_conflict)
     print("Uploading validated IPA to App Store Connect.", flush=True)
     apple_command(tool, "APPLE_UPLOAD_FAILED_CHECK_CONNECT_BEFORE_RETRY", [
         "xcrun", "altool", "--upload-app", *common,

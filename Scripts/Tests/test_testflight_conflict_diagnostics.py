@@ -73,7 +73,7 @@ class ConflictDiagnosticTests(unittest.TestCase):
         if expected:
             report.assert_called_once()
             self.assertEqual(output.getvalue(), "BUILD_AVAILABILITY_DIAGNOSTIC " + json.dumps({
-                "phase": "POST_APPLE_VALIDATION", "outcome": "CONFLICT",
+                "phase": "PRE_APPLE_VALIDATION", "outcome": "CONFLICT",
                 "categories": sorted(expected),
             }, separators=(",", ":")) + "\n")
         else:
@@ -139,7 +139,7 @@ class ConflictDiagnosticTests(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 release.report_build_conflict(values)
             self.assertEqual(output.getvalue(), "BUILD_AVAILABILITY_DIAGNOSTIC " + json.dumps({
-                "phase": "POST_APPLE_VALIDATION", "outcome": "CONFLICT", "categories": expected,
+                "phase": "PRE_APPLE_VALIDATION", "outcome": "CONFLICT", "categories": expected,
             }, separators=(",", ":")) + "\n")
 
     def test_reporting_is_optional_and_does_not_change_conflict(self):
@@ -153,30 +153,59 @@ class ConflictDiagnosticTests(unittest.TestCase):
 
 
 class ReleaseDiagnosticWiringTests(unittest.TestCase):
-    def run_release(self, conflict=False, validation_failure=False):
+    def run_release(self, builds=(), uploads=(), query_error=False,
+                    apple_failure=None, validation_record=False, competing_client=False):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary) / "synthetic-work"
             work.mkdir()
             release.write_state(work, {"version": 1, "keychains": None, "profile": None})
             tool = Mock(work=work, env={})
-            tool.run.return_value = b""
             api = client()
-            pages = snapshot() + snapshot(uploads=[upload()] if conflict else [])
             events = []
+            visible_uploads = list(uploads)
+            queries = 0
             real_check = api.assert_build_still_available
 
-            def check(*args, **kwargs):
-                events.append("CHECK")
-                return real_check(*args, **kwargs)
+            def get_page(_path):
+                nonlocal queries
+                queries += 1
+                if queries <= 4:
+                    return snapshot()[queries - 1]
+                if query_error:
+                    raise connect.ConnectError("ASC_REQUEST_FAILED")
+                return snapshot(builds=builds, uploads=visible_uploads)[(queries - 5) % 4]
 
-            def apple(_tool, code, _args, **_kwargs):
+            def check(*args, **kwargs):
+                self.assertEqual([call.args[-1] for call in verified.call_args_list], ["Archive", "IPA"])
+                events.append("CHECK")
+                result = real_check(*args, **kwargs)
+                if competing_client:
+                    # Hypothetical other submission after the non-atomic preflight.
+                    visible_uploads.append(upload(state="AWAITING_UPLOAD"))
+                return result
+
+            def run_tool(code, args, **_kwargs):
                 if code == "APPLE_IPA_VALIDATION_FAILED":
                     events.append("VALIDATE")
-                    if validation_failure:
-                        raise release.ReleaseError(code)
-                else:
+                    self.assertIn("--validate-app", args)
+                    if validation_record:
+                        # Hypothesis fixture only; not evidence about altool behavior.
+                        visible_uploads.append(upload(state="AWAITING_UPLOAD"))
+                    failure = "validation"
+                elif code == "APPLE_UPLOAD_FAILED_CHECK_CONNECT_BEFORE_RETRY":
                     events.append("UPLOAD")
+                    self.assertIn("--upload-app", args)
+                    failure = "upload"
+                else:
+                    return b""
+                if apple_failure == failure + "_exit":
+                    raise release.ReleaseError(code)
+                if apple_failure == failure + "_json":
+                    return json.dumps({"product-errors": [{"message": MARKER,
+                                        "id": "synthetic-resource-id"}]}).encode()
+                return json.dumps({"status": "success", "private-detail": MARKER}).encode()
 
+            tool.run.side_effect = run_tool
             env = {name: MARKER for name in release.SECRET_NAMES}
             env.update({"APP_STORE_CONNECT_KEY_ID": "SYNTHETIC", "GITHUB_RUN_NUMBER": "5",
                         "GITHUB_RUN_ATTEMPT": "1", "TESTFLIGHT_WORK_DIR": str(work),
@@ -203,9 +232,9 @@ class ReleaseDiagnosticWiringTests(unittest.TestCase):
                 stack.enter_context(patch.object(release, "extract_ipa", return_value=work / "fake-app"))
                 stack.enter_context(patch.object(Path, "glob", return_value=[work / "not-created.ipa"]))
                 stack.enter_context(patch.object(release, "ConnectClient", return_value=api))
-                get = stack.enter_context(patch.object(api, "_get", side_effect=pages))
-                stack.enter_context(patch.object(api, "assert_build_still_available", side_effect=check))
-                stack.enter_context(patch.object(release, "apple_command", side_effect=apple))
+                get = stack.enter_context(patch.object(api, "_get", side_effect=get_page))
+                checked = stack.enter_context(patch.object(api, "assert_build_still_available", side_effect=check))
+                # Exercise the real apple_command JSON/error handling with synthetic output.
                 cleaned = stack.enter_context(patch.object(release, "cleanup", wraps=release.cleanup))
                 external = stack.enter_context(patch.object(release.subprocess, "run",
                                                 side_effect=AssertionError("External tools forbidden")))
@@ -214,34 +243,68 @@ class ReleaseDiagnosticWiringTests(unittest.TestCase):
                 status = release.main(["--release"])
                 self.assertTrue(all(name not in release.os.environ for name in release.SECRET_NAMES))
             self.assertEqual(verified.call_count, 2)
+            checked.assert_called_once()
             cleaned.assert_called_once_with(work)
             self.assertFalse(work.exists())
             external.assert_not_called()
             api._token.assert_not_called()
             api._opener.open.assert_not_called()
             for private in (MARKER, BUNDLE, str(work), identity.team_id, identity.uuid,
-                            "synthetic-resource-id", "PRIVATE KEY", "--validate-app", "https://"):
+                            "synthetic-resource-id", "PRIVATE KEY", "--validate-app", "--upload-app", "https://"):
                 self.assertNotIn(private, output.getvalue())
             return status, events, output.getvalue(), get.call_count
 
-    def test_actual_post_validation_check_reports_and_stops_upload_then_cleans(self):
-        status, events, output, calls = self.run_release(conflict=True)
-        self.assertEqual((status, events, calls), (1, ["VALIDATE", "CHECK"], 8))
+    def test_preexisting_awaiting_upload_stops_validation_and_upload_then_cleans(self):
+        status, events, output, calls = self.run_release(uploads=[upload(state="AWAITING_UPLOAD")])
+        self.assertEqual((status, events, calls), (1, ["CHECK"], 8))
         diagnostic = [line for line in output.splitlines() if line.startswith("BUILD_AVAILABILITY_DIAGNOSTIC ")]
-        self.assertEqual(diagnostic, ['BUILD_AVAILABILITY_DIAGNOSTIC {"phase":"POST_APPLE_VALIDATION",'
-                                    '"outcome":"CONFLICT","categories":["UPLOAD_PROCESSING_EQUAL"]}'])
+        self.assertEqual(diagnostic, ['BUILD_AVAILABILITY_DIAGNOSTIC {"phase":"PRE_APPLE_VALIDATION",'
+                                    '"outcome":"CONFLICT","categories":["UPLOAD_AWAITING_UPLOAD_EQUAL"]}'])
         self.assertIn("Release stopped: BUILD_NUMBER_NO_LONGER_AVAILABLE", output)
 
-    def test_available_build_keeps_validation_check_upload_order(self):
+    def test_other_preexisting_conflicts_stop_before_both_apple_commands(self):
+        cases = [([build(state=state)], []) for state in ["VALID", "PROCESSING", "FAILED", "INVALID", MARKER]]
+        cases += [([], [upload(state=state)]) for state in ["PROCESSING", "COMPLETE", MARKER]]
+        cases += [([], [upload("6.1", "AWAITING_UPLOAD")])]
+        for index, (builds, uploads) in enumerate(cases):
+            with self.subTest(case=index):
+                status, events, output, calls = self.run_release(builds=builds, uploads=uploads)
+                self.assertEqual((status, events, calls), (1, ["CHECK"], 8))
+                self.assertIn("Release stopped: BUILD_NUMBER_NO_LONGER_AVAILABLE", output)
+
+    def test_preflight_api_failure_stops_before_both_apple_commands(self):
+        status, events, output, calls = self.run_release(query_error=True)
+        self.assertEqual((status, events, calls), (1, ["CHECK"], 5))
+        self.assertNotIn("BUILD_AVAILABILITY_DIAGNOSTIC", output)
+        self.assertIn("Release stopped: ASC_REQUEST_FAILED", output)
+
+    def test_available_build_keeps_check_validation_upload_order(self):
         status, events, output, calls = self.run_release()
-        self.assertEqual((status, events, calls), (0, ["VALIDATE", "CHECK", "UPLOAD"], 8))
+        self.assertEqual((status, events, calls), (0, ["CHECK", "VALIDATE", "UPLOAD"], 8))
         self.assertNotIn("BUILD_AVAILABILITY_DIAGNOSTIC", output)
 
-    def test_apple_validation_failure_never_runs_second_check_or_upload(self):
-        status, events, output, calls = self.run_release(validation_failure=True)
-        self.assertEqual((status, events, calls), (1, ["VALIDATE"], 4))
+    def test_hypothetical_record_from_validation_is_not_requeried(self):
+        status, events, output, calls = self.run_release(validation_record=True)
+        self.assertEqual((status, events, calls), (0, ["CHECK", "VALIDATE", "UPLOAD"], 8))
         self.assertNotIn("BUILD_AVAILABILITY_DIAGNOSTIC", output)
-        self.assertIn("Release stopped: APPLE_IPA_VALIDATION_FAILED", output)
+
+    def test_other_client_after_preflight_can_be_rejected_by_apple_validation(self):
+        for failure in ["validation_json", "validation_exit"]:
+            with self.subTest(mode=failure):
+                status, events, output, calls = self.run_release(competing_client=True, apple_failure=failure)
+                self.assertEqual((status, events, calls), (1, ["CHECK", "VALIDATE"], 8))
+                self.assertNotIn("BUILD_AVAILABILITY_DIAGNOSTIC", output)
+                self.assertIn("Release stopped: APPLE_IPA_VALIDATION_FAILED", output)
+                self.assertNotIn("Upload accepted.", output)
+
+    def test_other_client_after_preflight_can_be_rejected_by_apple_upload(self):
+        for failure in ["upload_json", "upload_exit"]:
+            with self.subTest(mode=failure):
+                status, events, output, calls = self.run_release(competing_client=True, apple_failure=failure)
+                self.assertEqual((status, events, calls), (1, ["CHECK", "VALIDATE", "UPLOAD"], 8))
+                self.assertNotIn("BUILD_AVAILABILITY_DIAGNOSTIC", output)
+                self.assertIn("Release stopped: APPLE_UPLOAD_FAILED_CHECK_CONNECT_BEFORE_RETRY", output)
+                self.assertNotIn("Upload accepted.", output)
 
 
 if __name__ == "__main__":
