@@ -22,6 +22,20 @@ API_HOST = "api.appstoreconnect.apple.com"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 MAX_PAGES = 1000
 P256_ORDER = int("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551", 16)
+_BUILD_STATE_CATEGORIES = {
+    "PROCESSING": "BUILD_RESOURCE_PROCESSING", "VALID": "BUILD_RESOURCE_VALID",
+    "FAILED": "BUILD_RESOURCE_FAILED", "INVALID": "BUILD_RESOURCE_INVALID",
+}
+_UPLOAD_STATE_CATEGORIES = {
+    "AWAITING_UPLOAD": "UPLOAD_AWAITING_UPLOAD", "PROCESSING": "UPLOAD_PROCESSING",
+    "COMPLETE": "UPLOAD_COMPLETE",
+}
+BUILD_CONFLICT_CATEGORIES = frozenset(
+    source + "_" + relation
+    for source in (*_BUILD_STATE_CATEGORIES.values(), *_UPLOAD_STATE_CATEGORIES.values(),
+                   "BUILD_RESOURCE_UNKNOWN_STATE", "UPLOAD_UNKNOWN_STATE")
+    for relation in ("EQUAL", "HIGHER")
+)
 
 
 class ConnectError(RuntimeError):
@@ -224,7 +238,7 @@ class ConnectClient:
                 _checked_url(url)
         return resources
 
-    def existing_build_versions(self, bundle_identifier, marketing_version):
+    def existing_build_versions(self, bundle_identifier, marketing_version, *, _observations=None):
         if (not isinstance(bundle_identifier, str)
                 or not re.fullmatch(r"[A-Za-z0-9.-]{1,255}", bundle_identifier)
                 or not isinstance(marketing_version, str)
@@ -250,7 +264,15 @@ class ConnectClient:
                 "filter[app]": app_id, "filter[preReleaseVersion]": release["id"],
                 "limit": "200", "sort": "-uploadedDate",
             }, "builds")
-            versions.extend(build["attributes"].get("version") for build in builds)
+            for build in builds:
+                attributes = build["attributes"]
+                version = attributes.get("version")
+                versions.append(version)
+                if _observations is not None:
+                    state = attributes.get("processingState")
+                    category = (_BUILD_STATE_CATEGORIES.get(state, "BUILD_RESOURCE_UNKNOWN_STATE")
+                                if isinstance(state, str) else "BUILD_RESOURCE_UNKNOWN_STATE")
+                    _observations.append((version, category))
         # Include uploads not yet represented by a processed Build resource.
         # Apple permits reusing a FAILED upload's build number. Keep all other
         # states conservative. Endpoint failure stops the release, never falls back.
@@ -268,16 +290,33 @@ class ConnectClient:
                 parse_build_number(attributes.get("cfBundleVersion"))
                 continue
             versions.append(attributes.get("cfBundleVersion"))
+            if _observations is not None:
+                value = state.get("state") if isinstance(state, dict) else None
+                category = (_UPLOAD_STATE_CATEGORIES.get(value, "UPLOAD_UNKNOWN_STATE")
+                            if isinstance(value, str) else "UPLOAD_UNKNOWN_STATE")
+                _observations.append((attributes.get("cfBundleVersion"), category))
         for version in versions:
             parse_build_number(version)
         return versions
 
-    def highest_build(self, bundle_identifier, marketing_version):
+    def highest_build(self, bundle_identifier, marketing_version, *, _observations=None):
         return max((parse_build_number(value) for value in
-                    self.existing_build_versions(bundle_identifier, marketing_version)), default=None)
+                    self.existing_build_versions(bundle_identifier, marketing_version,
+                                                 _observations=_observations)), default=None)
 
-    def assert_build_still_available(self, bundle_identifier, marketing_version, build_number):
+    def assert_build_still_available(self, bundle_identifier, marketing_version, build_number,
+                                     *, report_conflict=None):
         candidate = parse_build_number(build_number)
-        highest = self.highest_build(bundle_identifier, marketing_version)
+        observations = []
+        highest = self.highest_build(bundle_identifier, marketing_version, _observations=observations)
         if highest is not None and candidate <= highest:
+            if report_conflict is not None:
+                categories = set()
+                for version, source in observations:
+                    observed = parse_build_number(version)
+                    if observed >= candidate:
+                        relation = "EQUAL" if observed == candidate else "HIGHER"
+                        categories.add(source + "_" + relation)
+                # Only a bounded set of fixed categories crosses the reporting boundary.
+                report_conflict(tuple(sorted(categories & BUILD_CONFLICT_CATEGORIES)))
             raise ConnectError("BUILD_NUMBER_NO_LONGER_AVAILABLE")

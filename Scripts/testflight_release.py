@@ -24,7 +24,9 @@ import sys
 import tempfile
 import zipfile
 
-from testflight_connect import ConnectClient, ConnectError, choose_build_number
+from testflight_connect import (
+    BUILD_CONFLICT_CATEGORIES, ConnectClient, ConnectError, choose_build_number,
+)
 from testflight_signing import (
     SigningValidationError, export_options, validate_profile,
     validate_signed_entitlements,
@@ -545,6 +547,16 @@ def apple_command(tool, code, args, env, timeout):
     require(type(response) is dict and bool(response) and not has_errors(response), code)
 
 
+def report_build_conflict(categories):
+    # Recheck the finite allowlist at the output boundary; never serialize API data.
+    safe = sorted({value for value in categories
+                   if type(value) is str and value in BUILD_CONFLICT_CATEGORIES})
+    print("BUILD_AVAILABILITY_DIAGNOSTIC " + json.dumps({
+        "phase": "POST_APPLE_VALIDATION", "outcome": "CONFLICT",
+        "categories": safe or ["UNCLASSIFIED_CONFLICT"],
+    }, separators=(",", ":")), flush=True)
+
+
 def release(work, credentials):
     require(sys.platform == "darwin", "MACOS_REQUIRED")
     require(os.environ.get("RUNNER_DEBUG") != "1", "DISABLE_ACTIONS_DEBUG_FOR_RELEASE")
@@ -621,7 +633,8 @@ def release(work, credentials):
     print("Validating signed IPA with Apple upload tooling.", flush=True)
     apple_command(tool, "APPLE_IPA_VALIDATION_FAILED", ["xcrun", "altool", "--validate-app", *common],
                   env=upload_env, timeout=600)
-    client.assert_build_still_available(bundle, marketing, build)
+    client.assert_build_still_available(bundle, marketing, build,
+                                        report_conflict=report_build_conflict)
     print("Uploading validated IPA to App Store Connect.", flush=True)
     apple_command(tool, "APPLE_UPLOAD_FAILED_CHECK_CONNECT_BEFORE_RETRY", [
         "xcrun", "altool", "--upload-app", *common,
