@@ -478,7 +478,7 @@ def verify_signed_app(tool, app, settings, build, identity, certificate, label):
     tool.run("CODE_SIGNATURE_INVALID", ["codesign", "--verify", "--deep", "--strict", app])
     cert_prefix = tool.work / (label + "-certificate-")
     tool.run("SIGNED_CERTIFICATE_UNAVAILABLE", [
-        "codesign", "--display", "--extract-certificates", cert_prefix, app,
+        "codesign", "--display", "--extract-certificates=" + str(cert_prefix), app,
     ])
     require(Path(str(cert_prefix) + "0").read_bytes() == certificate,
             "SIGNED_CERTIFICATE_MISMATCH")
