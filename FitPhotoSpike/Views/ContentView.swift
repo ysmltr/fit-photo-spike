@@ -15,7 +15,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 20) {
                     if model.inputs.isEmpty { emptySelection }
                     else if model.outputs.isEmpty { selection }
                     else { results }
@@ -33,8 +33,10 @@ struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if !model.outputs.isEmpty { resultActions }
+                else { primaryAction }
             }
             .navigationTitle(model.outputs.isEmpty ? "Fit Photos" : "Your Photos")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if model.outputs.isEmpty {
@@ -84,33 +86,55 @@ struct ContentView: View {
     }
 
     private var emptySelection: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(spacing: 28) {
+            Text("The whole photo. A better fit.")
+                .font(.title2.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Image(systemName: "photo.on.rectangle.angled")
-                .font(.system(size: 44)).accessibilityHidden(true).padding(.top, 24)
-            Text("The whole photo.\nA new fit.").font(.largeTitle.bold())
-                .accessibilityAddTraits(.isHeader)
-            Text("Add white space to fit your photos into a new shape. No cropping or stretching.")
-                .foregroundStyle(.secondary)
-            Button("Select Photos") { showsPicker = true }
-                .buttonStyle(FitPrimaryButtonStyle()).disabled(model.isBusy)
-            Text("Choose 1–20 still images. Your originals stay unchanged. Processing happens on this iPhone.")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.system(size: 44)).accessibilityHidden(true)
         }
+        .padding(.vertical, 24)
+        .frame(maxWidth: .infinity)
+    }
+
+    // Keep the next action reachable independently of the scrollable content.
+    private var primaryAction: some View {
+        Button {
+            if model.inputs.isEmpty { showsPicker = true }
+            else { model.convert() }
+        } label: {
+            Text(model.inputs.isEmpty ? "Select Photos" : "Preview Photos")
+        }
+        .buttonStyle(FitPrimaryButtonStyle())
+        .disabled(model.isBusy)
+        .accessibilityLabel(model.inputs.isEmpty ? "Select Photos" : "Preview \(model.inputs.count) photos")
+        .accessibilityHint(model.inputs.isEmpty
+            ? "Choose up to 20 photos."
+            : "Converts your selection using the chosen ratio.")
+        .padding(.horizontal, 20).padding(.vertical, 12)
+        .frame(maxWidth: 680).frame(maxWidth: .infinity)
+        .background(Color(uiColor: .systemBackground))
     }
 
     private var selection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("\(model.inputs.count) selected").font(.headline)
-                Spacer()
-                Button("Change") { showsPicker = true }.frame(minHeight: 44)
-                    .accessibilityLabel("Change photo selection").disabled(model.isBusy)
+        VStack(alignment: .leading, spacing: 16) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 16) {
+                    Text("\(model.inputs.count) selected").font(.headline).fixedSize()
+                    Spacer(minLength: 0)
+                    editSelectionButton.fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(model.inputs.count) selected").font(.headline)
+                    editSelectionButton
+                }
             }
             ScrollView(.horizontal) {
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     ForEach(Array(model.inputs.enumerated()), id: \.element) { index, url in
                         VStack(spacing: 4) {
-                            FileThumbnail(url: url, maximumPixelSize: 192).frame(width: 88, height: 88)
+                            FileThumbnail(url: url, maximumPixelSize: 192).frame(width: 64, height: 64)
                                 .overlay(Rectangle().stroke(.gray.opacity(0.25)))
                             Text("\(index + 1)").font(.caption).foregroundStyle(.secondary)
                         }.accessibilityElement(children: .ignore)
@@ -118,17 +142,19 @@ struct ContentView: View {
                     }
                 }
             }
+            .scrollIndicators(.hidden)
             RatioChooser(selection: $model.ratio).disabled(model.isBusy)
-            Button("Convert \(model.inputs.count) \(model.inputs.count == 1 ? "Photo" : "Photos")") { model.convert() }
-                .buttonStyle(FitPrimaryButtonStyle()).disabled(model.isBusy)
-            Text("White padding · JPEG output · Nothing saved automatically")
-                .font(.footnote).foregroundStyle(.secondary)
         }
+    }
+
+    private var editSelectionButton: some View {
+        Button("Edit selection") { showsPicker = true }
+            .frame(minHeight: 44).disabled(model.isBusy)
     }
 
     private var results: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("\(model.outputs.count) ready · \(model.ratio.title)").font(.title2.bold())
+            Text("\(model.outputs.count) ready · \(model.ratio.title)").font(.headline)
                 .accessibilityAddTraits(.isHeader)
             Text("Review your photos, then save or share the whole batch.").foregroundStyle(.secondary)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 16)], spacing: 16) {
@@ -145,7 +171,7 @@ struct ContentView: View {
                 }
             }
             Button("Change Ratio") { model.changeRatio() }.frame(minHeight: 44).disabled(model.isBusy)
-            Text("Save All adds new copies to Photos. Share lets you choose a destination that accepts this batch. Originals are never replaced.")
+            Text("Save All creates new copies. Your originals stay unchanged.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }
@@ -186,11 +212,16 @@ struct ContentView: View {
     private var shortcutsHelp: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Clear. Fast. Trustworthy.").font(.title2.bold())
-                    Text("Fit Photos works on this device. Choose photos, fit the whole image into a white canvas, and decide whether to save or share.")
-                    Text("Use it with Shortcuts too").font(.headline)
-                    Text("The Fit Photos to 4:5 action is still available in Shortcuts. It returns temporary images to the next action, without saving them automatically. You can build and edit your own workflow.")
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your photos stay yours").font(.headline).accessibilityAddTraits(.isHeader)
+                        Text("Only the photos you select. Processing stays on your device; Fit Photos never uploads your images.")
+                        Text("Originals stay unchanged. New copies are saved to Photos only when you choose to save them.")
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Shortcuts, if you want").font(.headline).accessibilityAddTraits(.isHeader)
+                        Text("Fit Photos works on its own. You can also use Fit Photos to 4:5 in Shortcuts, then pass its results to Share or another action.")
+                    }
                     Button("Open Shortcuts") {
                         if let url = URL(string: "shortcuts://") {
                             openURL(url) { accepted in
@@ -201,11 +232,17 @@ struct ContentView: View {
                             }
                         }
                     }.buttonStyle(.bordered).controlSize(.large)
-                    Text("Shortcuts is optional. You can select, convert, save, and share directly in this app.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }.padding(20)
+                }
+                .font(.body)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 560, alignment: .leading)
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .center)
             }
+            .background(Color(uiColor: .systemBackground))
             .navigationTitle("About Fit Photos").navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsHelp = false } } }
         }
     }
