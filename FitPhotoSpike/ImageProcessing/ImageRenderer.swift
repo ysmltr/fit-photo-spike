@@ -17,6 +17,22 @@ struct RenderResult: Sendable {
 struct ImageRenderer: Sendable {
     func render(inputURL: URL, outputURL: URL,
                 maximumLongEdge: Int = 5120) throws -> RenderResult {
+        try render(inputURL: inputURL, outputURL: outputURL) { width, height in
+            try CanvasGeometry(sourceWidth: width, sourceHeight: height,
+                               maximumLongEdge: maximumLongEdge)
+        }
+    }
+
+    func render(inputURL: URL, outputURL: URL, ratio: OutputRatio) throws -> RenderResult {
+        try render(inputURL: inputURL, outputURL: outputURL) { width, height in
+            try CanvasGeometry(sourceWidth: width, sourceHeight: height, ratio: ratio)
+        }
+    }
+
+    /// Both entry points share decoding, orientation, compositing and encoding.
+    /// Only their sizing policy differs.
+    private func render(inputURL: URL, outputURL: URL,
+                        geometry makeGeometry: (Int, Int) throws -> CanvasGeometry) throws -> RenderResult {
         try autoreleasepool {
             try Task.checkCancellation()
             guard inputURL.resolvingSymlinksInPath().standardizedFileURL
@@ -24,9 +40,7 @@ struct ImageRenderer: Sendable {
                 throw ImageRenderingError.sameInputAndOutput
             }
             let input = try readInput(url: inputURL)
-            let geometry = try CanvasGeometry(sourceWidth: input.width,
-                                              sourceHeight: input.height,
-                                              maximumLongEdge: maximumLongEdge)
+            let geometry = try makeGeometry(input.width, input.height)
             let decodeLongEdge = max(1, Int(ceil(max(geometry.imageRect.width,
                                                      geometry.imageRect.height))))
             // Always make the thumbnail from the actual image rather than a

@@ -1,83 +1,84 @@
 # Fit Photos
 
-Native Swift / SwiftUI for iOS 18+. **Fit Photos to 4:5** takes 1–20 image files from Shortcuts, renders each into a white 4:5 canvas on the device, and returns temporary JPEG files to the next action. The full supplied image stays visible with its proportions and orientation preserved. The app never saves to or modifies the Photos library.
+A native SwiftUI iPhone app for fitting complete photos onto white canvases. V1 adds an independent app flow while preserving the existing **Fit Photos to 4:5** Shortcuts action.
 
-**Validation status: native compilation, Swift test execution, GitHub Actions execution, and physical iPhone tests are NOT RUN in this Windows workspace.** The project and automated macOS workflow are prepared for validation; preparation is not a passing build. See [VALIDATION.md](VALIDATION.md).
+This review package was made from the user-supplied `FitPhotos-Astra-Source.zip`. It contains no Git history. Its commit has **not** been verified against GitHub. Signing, release scripts, and GitHub Actions workflows are preserved from that ZIP; this handoff does not publish a build.
 
-The internal Xcode project, scheme, and directory remain named `FitPhotoSpike` so existing CI and Windows setup commands keep working. The product screen is **Fit Photos**. Start with [WINDOWS_SETUP.md](WINDOWS_SETUP.md) to create the GitHub repository and run CI from Windows.
+## Standalone app
 
-## Production architecture
+1. Open Fit Photos and tap **Select Photos**.
+2. Select 1–20 still images in Apple's native picker, in the desired order.
+3. Choose a ratio, then tap **Convert Photos** (the button includes the batch count).
+4. Review the result grid or open a preview and move between images. **Save All** and **Share** remain below the scrolling results; reviewing each image is optional.
 
-1. The **Fit Photos to 4:5** AppIntent accepts an image-constrained array of `IntentFile` values. It rejects an empty request or more than 20 files before processing.
-2. `TemporaryImageProcessor` processes one image at a time. ImageIO reads and decodes each supplied representation; the renderer applies its EXIF orientation, computes an aspect-fit rectangle, and composites onto white. There is no crop, stretch, or photo-library lookup.
-3. Each rendered image is written as an opaque SDR sRGB JPEG in the app-controlled `tmp/FitPhotosOutputs/` directory. Results use filenames such as `fit-4x5-01-<UUID>.jpeg`, the JPEG UTType (`public.jpeg`), and file-backed `IntentFile` values. A distinct random component prevents collisions between runs; it is not an asset identifier.
-4. The action returns the output array in input order. Each returned file has `removedOnCompletion = true` so Shortcuts can remove it after the workflow completes. The app does not delete successful files as soon as `perform()` returns. It removes the current invocation's partial outputs when processing fails or is cancelled before handoff; it does not sweep outputs from another invocation based on age.
-5. The next Shortcuts action decides what happens to those files. **Share** can pass them to another app. The app has no automatic save step.
+| Ratio | Canvas pixels | Description |
+| --- | --- | --- |
+| 4:5 (default) | 1080 × 1350 | Portrait |
+| 3:4 | 1080 × 1440 | Classic portrait |
+| 9:16 | 1080 × 1920 | Tall portrait |
+| 1:1 | 1080 × 1080 | Square |
 
-Successful temporary outputs must remain readable through downstream actions. Actual Shortcuts cleanup timing, cancellations after handoff, and behavior under low storage require the device protocol in [PHYSICAL_DEVICE_TEST.md](PHYSICAL_DEVICE_TEST.md). The operating system also controls the availability of temporary storage; the app does not promise indefinite retention or a persistent export archive. See Apple's [IntentFile](https://developer.apple.com/documentation/appintents/intentfile) and [removedOnCompletion](https://developer.apple.com/documentation/appintents/intentfile/removedoncompletion) contracts.
+Every output is a JPEG containing the entire image, with white padding where needed, correct orientation, and no stretching or cropping. Ratios describe the output canvas; they are not a promise of suitability for every social network surface.
 
-The earlier `PhotoLibraryEditor`, `PreparedEdit`, PhotoKit adjustment model, edit view model, and **Test Photo Asset Identity** probe are removed from the production project. There is no `PHAsset` recovery, filename/date/hash matching, Photos database access, or PhotoKit write path. [FEASIBILITY.md](FEASIBILITY.md) records the product decision.
+**Save All** creates new Photos items only after an explicit tap and add-only system authorization. Selection does not request full-library access. Originals are never replaced or edited. **Share** gives the entire converted batch to the native iOS share sheet; the chosen destination decides which item types and batch sizes it supports. Instagram is not guaranteed to appear. Nothing is saved automatically.
 
-## Build a Shortcut
+## Processing and file lifetime
 
-For selection inside Shortcuts:
+The app and AppIntent share the ImageIO/Core Image renderer and geometry logic. The standalone app requests the four fixed pixel sizes above. The existing AppIntent keeps its original source-dependent 4:5 sizing and input/output contract; it does not silently switch to 1080 × 1350.
 
-1. Launch **Fit Photos** once after installation.
-2. Open Shortcuts and create a shortcut named **Fit and Share**.
-3. Add **Select Photos** and turn **Select Multiple** on.
-4. Add **Fit Photos to 4:5**. Set its **Photos** input to the output of Select Photos.
-5. Add **Share** and set its input to the processed files returned by Fit Photos to 4:5.
-6. Run the shortcut and choose 1–20 images. Choose the destination in the share sheet.
+Processing is sequential and operates on local files. It does not hold twenty full-resolution decoded images at once. Supported source encodings are JPEG, HEIC, and PNG still images. A picker/provider item can still be unsupported; unsupported or failed conversion is reported with its batch position rather than silently omitted. Transparent regions render over white. Animated images and videos are not supported as V1 inputs.
 
-For the Photos share sheet:
+The app begins importing after the picker sheet has dismissed and copies each provider file into an owned temporary session before that file-provider callback returns. A replacement selection is staged separately: cancellation or an import failure keeps the previous selection available. A successful import replaces the old batch; conversion errors discard partial outputs and keep the selected inputs for retry.
 
-1. Create a second shortcut named **Fit Shared Photos**.
-2. In its details, enable **Show in Share Sheet** and accept **Images**.
-3. Add **Fit Photos to 4:5**, with **Photos** set to **Shortcut Input**.
-4. Add **Share**, using the action's returned processed files.
-5. In Photos select 1–20 images, tap Share, and choose **Fit Shared Photos**. Use More if necessary to find the shortcut.
+App sessions live in `tmp/FitPhotosAppSessions/batch-<UUID>/`, separate from Shortcuts output directories. Save All and Share retain results for another action. **Change Ratio** discards the current converted files and returns to the retained inputs; conversion is required again. Confirming **New Batch** removes the previous app session before opening the picker. Abandoned app batch directories are cleaned once per app-process launch before a new UI session exists, and an active model cleans up its session when released. Cleanup does not run merely because the app backgrounds or a share sheet closes. The operating system may also reclaim temporary storage. Save or share results you want to keep; unsaved sessions are not restored after relaunch. See `V1_DEVICE_TEST.md` for lifetime and interruption checks.
 
-Do not add **Save to Photo Album** if you want to avoid adding library copies. Fit itself never saves to Photos, but a destination you explicitly choose in Share can save or upload a copy. Shortcuts or another app may request its own permissions or use the network to fetch or share the input. Fit's rendering has no network dependency.
+The AppIntent continues returning image `IntentFile` values with JPEG filenames/types and `removedOnCompletion = true`, so the next action can consume them and Shortcuts can clean them up when the workflow finishes. No cleanup operation is allowed to sweep another in-progress Shortcut's files.
 
-The app screen contains **Fit Photos**, “Use Fit Photos to 4:5 from the Shortcuts app.”, and **Open Shortcuts**. No in-app photo picker, account, subscription, backend, analytics, or Instagram API is included.
+## Shortcuts remains independent
 
-## Image behavior and limits
+An existing working Shortcut can continue using:
 
-Version 1 accepts supported JPEG, HEIC, and PNG still-image representations. The file's actual decoded format is checked; an extension alone is insufficient. Unsupported or damaged input fails the operation instead of returning a silent partial batch. Live Photo motion, video, RAW processing, and animated images are outside the MVP. If Shortcuts supplies a supported still representation of another source, Fit processes only that supplied still image.
+```text
+Select Photos (select multiple)
+→ Fit Photos to 4:5 (Photos = Select Photos output)
+→ Share (entire Fit Photos output)
+```
 
-For an upright input of `w × h`, the minimum integer 4:5 canvas uses `n = max(ceil(w/4), ceil(h/5))` and dimensions `4n × 5n`. The maximum canvas is **4096 × 5120**. Larger images scale down proportionally; smaller images are not enlarged. Every successful input produces a returned JPEG, including an input that is already 4:5.
+A Photos share-sheet Shortcut may use:
 
-| Upright input | Output canvas | Result |
-|---|---|---|
-| 4032 × 3024 landscape | 4032 × 5040 | White padding above and below |
-| 3024 × 4032 portrait | 3228 × 4035 | White padding chiefly at the sides |
-| 4000 × 4000 square | 4000 × 5000 | White padding above and below |
-| 8064 × 6048 landscape | 4096 × 5120 | Proportional downscale to fit |
+```text
+Receive Images from Share Sheet
+→ Get Images from Input (Shortcut Input)
+→ Fit Photos to 4:5 (Photos = Images from the preceding action)
+→ Share (entire Fit Photos output)
+```
 
-Transparent pixels are flattened onto white. Output is a lossy JPEG, not a byte-preserving or lossless copy. HDR, wide-gamut fidelity, depth, original metadata, and the original compression format are not preserved in the output. Existing edits and crops already baked into the file supplied by Shortcuts remain part of that input; Fit cannot restore pixels absent from it. The source file and original library asset remain untouched.
+The explicit image-extraction step is a configuration to test where direct `Shortcut Input` produced an empty array. It is not a proven fix for every Share Sheet transport issue. The AppIntent returns files; the separate Shortcut **Share** action presents sharing. The standalone app does not require installation of either Shortcut.
 
-Sequential processing and bounded decode dimensions limit simultaneous image work; they do not prove a particular peak-memory figure. One maximum-size RGBA canvas alone is about 80 MiB, before decoder, render, and encoder buffers. The 20-image and 48 MP cases require physical memory profiling.
+## Privacy and permissions
 
-## Permissions and privacy
+- Processing stays on the iPhone; no account, backend, analytics, advertisements, or photo upload is added.
+- The system photo picker supplies only the items the user selects. Fit Photos does not request full-library read permission.
+- `NSPhotoLibraryAddUsageDescription` supports explicit **Save All**. PhotoKit authorization is `.addOnly` and limited to the saver component.
+- No source `PHAsset` lookup, matching, editing, deleting, or identifier recovery is used.
+- Sharing is user-directed through iOS; a chosen destination app may send items according to that app's behavior.
+- An iCloud-only source may require Apple's picker to download it. Offline processing does not mean the app can read an original that is not on the device. Download test fixtures before testing offline.
 
-There are no Photos read/write or add-only usage descriptions, no PhotoKit authorization requests, and no Photos library writes in the production app. It reads only image representations supplied to the intent and writes its own temporary outputs. A Photos access request from **Select Photos** belongs to Shortcuts, not Fit.
+## Validation and review
 
-All rendering occurs on the device. There are no third-party dependencies, network calls, accounts, analytics, subscriptions, or tracking. Temporary files can contain personal images until workflow cleanup; they are not persistent app-managed albums.
+From the extracted project root on Windows:
 
-## macOS CI and later iPhone validation
+```powershell
+python -B Scripts/verify_project.py
+python -B -m unittest discover -s Scripts/Tests -p test_v1_project_policy.py -v
+```
 
-`.github/workflows/ios-ci.yml` builds the unsigned Simulator app on GitHub's `macos-26` runner with Xcode **26.6**, boots a compatible iPhone Simulator, and runs the entire shared-scheme test suite. Logs and available `.xcresult` bundles are preserved even on failure. CI needs no Apple Developer Program credentials, certificates, App Store Connect account, or paid Apple secrets. See the [runner inventory](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md).
-
-Tests cover geometry, raster output, EXIF orientation, transparency, multiple inputs and the limit, output metadata, and temporary-file behavior. Direct XCTest intent execution does not establish live Shortcuts discovery or transfer. AppIntentsTesting is unavailable in the selected Xcode 26.6 / iOS 26.5 configuration; see [APP_INTENTS_TESTING.md](APP_INTENTS_TESTING.md).
-
-To reproduce CI later on a Mac with the selected Xcode and Simulator runtime:
+These check source/project structure and synthetic policy cases; they do **not** compile Swift or validate iOS behavior. With full Xcode on a Mac, use the existing command:
 
 ```sh
-export DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer
-export FITPHOTO_EXPECTED_XCODE_VERSION=26.6
 bash Scripts/validate-on-mac.sh
 ```
 
-The project is `FitPhotoSpike.xcodeproj` and the shared scheme is `FitPhotoSpike`. For a physical iPhone, configure local device signing and install the same tested commit through Xcode or another authorized installation route. The unsigned Simulator product is not an installable iPhone IPA.
+The existing `.github/workflows/ios-ci.yml` runs that simulator build and full shared-scheme test suite. Its inherited summary text still describes the earlier no-Photos-access app; V1's explicit add-only Save All is described here. No workflow was edited to change that informational text.
 
-All physical results remain **NOT RUN**. Follow [PHYSICAL_DEVICE_TEST.md](PHYSICAL_DEVICE_TEST.md) for the exact two Shortcut workflows, output-lifetime observations, originals/no-duplicate checks, and memory tests; use [DEVICE_TESTS.md](DEVICE_TESTS.md) as the supplemental acceptance matrix.
+Read `VALIDATION.md` for the evidence boundary and `V1_DEVICE_TEST.md` for acceptance tests. Native compilation and the new standalone iPhone flow remain pending unless separately recorded as passed. Review and copy these source changes into the original checkout; do not infer a Git commit or release from this ZIP.
