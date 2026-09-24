@@ -1,8 +1,8 @@
 import CoreGraphics
 import Foundation
 
-/// Integer canvas dimensions are always exactly 4n × 5n. Coordinates use a
-/// bottom-left origin, matching Core Image.
+/// Centered aspect-fit geometry in Core Image's bottom-left coordinates.
+/// The original initializer retains the Shortcut's exact 4n × 5n dimensions.
 struct CanvasGeometry: Sendable {
     let width: Int
     let height: Int
@@ -22,6 +22,23 @@ struct CanvasGeometry: Sendable {
         height = 5 * n
         scale = min(1, min(CGFloat(width) / CGFloat(sourceWidth),
                            CGFloat(height) / CGFloat(sourceHeight)))
+        let fittedWidth = CGFloat(sourceWidth) * scale
+        let fittedHeight = CGFloat(sourceHeight) * scale
+        imageRect = CGRect(x: (CGFloat(width) - fittedWidth) / 2,
+                           y: (CGFloat(height) - fittedHeight) / 2,
+                           width: fittedWidth, height: fittedHeight)
+    }
+
+    /// App outputs have fixed pixel dimensions. Small sources may be enlarged
+    /// proportionally; neither axis is independently stretched or cropped.
+    init(sourceWidth: Int, sourceHeight: Int, ratio: OutputRatio) throws {
+        guard sourceWidth > 0, sourceHeight > 0 else {
+            throw ImageRenderingError.invalidDimensions
+        }
+        width = ratio.width
+        height = ratio.height
+        scale = min(CGFloat(width) / CGFloat(sourceWidth),
+                    CGFloat(height) / CGFloat(sourceHeight))
         let fittedWidth = CGFloat(sourceWidth) * scale
         let fittedHeight = CGFloat(sourceHeight) * scale
         imageRect = CGRect(x: (CGFloat(width) - fittedWidth) / 2,
