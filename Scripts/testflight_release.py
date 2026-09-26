@@ -31,7 +31,7 @@ from testflight_signing import (
     SigningValidationError, export_options, validate_profile,
     validate_signed_entitlements,
 )
-from verify_device_app import inspect_macho, inspect_metadata
+from verify_device_app import inspect_macho
 
 
 PROJECT = Path(__file__).resolve().parent.parent
@@ -119,7 +119,6 @@ def archive_failure_summary(log_path, start, outcome, returncode=None):
         b"CompileC": "COMPILE_C", b"Ld": "LINK",
         b"CompileAssetCatalog": "ASSET_CATALOG",
         b"CompileAssetCatalogVariant": "ASSET_CATALOG",
-        b"ExtractAppIntentsMetadata": "APP_INTENTS_METADATA",
         b"ProcessInfoPlistFile": "INFO_PLIST", b"PhaseScriptExecution": "BUILD_SCRIPT",
     }
     failed_tasks, hints = set(), set()
@@ -472,11 +471,10 @@ def verify_signed_app(tool, app, settings, build, identity, certificate, label):
         executable = info["CFBundleExecutable"]
         require(executable == SCHEME, "SIGNED_EXECUTABLE_INVALID")
         inspect_macho((app / executable).read_bytes())
-        inspect_metadata(app)
     except ReleaseError:
         raise
     except Exception:
-        raise ReleaseError("DEVICE_BINARY_OR_APPINTENTS_METADATA_INVALID") from None
+        raise ReleaseError("DEVICE_BINARY_INVALID") from None
     tool.run("CODE_SIGNATURE_INVALID", ["codesign", "--verify", "--deep", "--strict", app])
     cert_prefix = tool.work / (label + "-certificate-")
     tool.run("SIGNED_CERTIFICATE_UNAVAILABLE", [
@@ -499,7 +497,7 @@ def verify_signed_app(tool, app, settings, build, identity, certificate, label):
         raise ReleaseError("SIGNED_ENTITLEMENTS_INVALID") from None
     validate_signed_entitlements(entitlements, profile,
                                  settings["PRODUCT_BUNDLE_IDENTIFIER"], identity.team_id)
-    print(label + ": bundle, versions, Apple Distribution signature, profile, arm64 iPhoneOS and App Intents metadata verified.", flush=True)
+    print(label + ": bundle, versions, Apple Distribution signature, profile and arm64 iPhoneOS verified.", flush=True)
 
 
 def extract_ipa(tool, ipa):
@@ -648,7 +646,7 @@ def release(work, credentials):
             stream.write("Signed upload accepted by Apple. Processing remains pending.\n\n"
                          + "Marketing version: " + marketing + "\n\nBuild number: " + build
                          + "\n\nArchive and exported IPA passed identity, profile, signature, "
-                         "arm64 iPhoneOS and App Intents metadata checks.\n\n"
+                         "arm64 iPhoneOS checks.\n\n"
                          "No release, App Review submission, external tester enrollment or "
                          "physical-device validation was performed. No GitHub artifacts retained.\n")
 

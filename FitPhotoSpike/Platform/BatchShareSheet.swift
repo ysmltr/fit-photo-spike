@@ -5,10 +5,11 @@ import UIKit
 /// file URLs; it does not decode the batch or save to Photos automatically.
 struct BatchShareSheet: UIViewControllerRepresentable {
     let urls: [URL]
+    let session: AppSessionFiles?
     let onCompletion: (Bool) -> Void
 
     func makeUIViewController(context: Context) -> SharePresentationController {
-        SharePresentationController(urls: urls, onCompletion: onCompletion)
+        SharePresentationController(urls: urls, session: session, onCompletion: onCompletion)
     }
 
     func updateUIViewController(_ controller: SharePresentationController, context: Context) {}
@@ -17,12 +18,15 @@ struct BatchShareSheet: UIViewControllerRepresentable {
     /// An explicit source anchor satisfies UIKit's iPad popover requirement.
     final class SharePresentationController: UIViewController, UIPopoverPresentationControllerDelegate {
         private let urls: [URL]
+        // Keep app-owned files alive through system activity completion/dismissal.
+        private let session: AppSessionFiles?
         private let onCompletion: (Bool) -> Void
         private var presentedShareSheet = false
         private var reportedCompletion = false
 
-        init(urls: [URL], onCompletion: @escaping (Bool) -> Void) {
+        init(urls: [URL], session: AppSessionFiles?, onCompletion: @escaping (Bool) -> Void) {
             self.urls = urls
+            self.session = session
             self.onCompletion = onCompletion
             super.init(nibName: nil, bundle: nil)
         }

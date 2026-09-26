@@ -18,7 +18,7 @@ SENTINEL = "SYNTHETIC_PRIVATE_SENTINEL_DO_NOT_PRINT"
 ERROR = "SIGNED_ARCHIVE_FAILED"
 TASKS = {
     "CODE_SIGN", "SWIFT_COMPILE", "SWIFT_MODULE", "SWIFT_DRIVER",
-    "COMPILE_C", "LINK", "ASSET_CATALOG", "APP_INTENTS_METADATA",
+    "COMPILE_C", "LINK", "ASSET_CATALOG",
     "INFO_PLIST", "BUILD_SCRIPT",
 }
 HINTS = {
@@ -58,17 +58,17 @@ class SummaryTests(unittest.TestCase):
         result = self.summarize((
             "The following build commands failed:\n"
             "\tSwiftCompile normal arm64 /private/" + SENTINEL + "\n"
-            "    ExtractAppIntentsMetadata /private/" + SENTINEL + "\n"
+            "    ProcessInfoPlistFile /private/" + SENTINEL + "\n"
             "    UnknownTask /private/" + SENTINEL + "\n"
             "(3 failures)\n"
         ).encode())
-        self.assertEqual(result["failed_tasks"], ["APP_INTENTS_METADATA", "SWIFT_COMPILE"])
+        self.assertEqual(result["failed_tasks"], ["INFO_PLIST", "SWIFT_COMPILE"])
 
     def test_successful_command_mentions_are_not_failed_tasks(self):
         result = self.summarize((
             "CodeSign /private/" + SENTINEL + "\n"
             "SwiftCompile normal arm64 /private/source.swift\n"
-            "ExtractAppIntentsMetadata /private/app\n"
+            "ProcessInfoPlistFile /private/app\n"
             "** ARCHIVE SUCCEEDED **\n"
         ).encode())
         self.assertEqual(result["failed_tasks"], [])

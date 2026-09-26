@@ -24,7 +24,7 @@ enum PhotoSelectionError: LocalizedError, Equatable, Sendable {
 @MainActor
 struct PickerFileLoader {
     func load(_ results: [PHPickerResult], into directory: URL,
-              progress: @escaping @Sendable (Int, Int) -> Void) async throws -> [URL] {
+              progress: @escaping @MainActor (Int, Int) -> Void) async throws -> [URL] {
         guard (1...20).contains(results.count) else { throw PhotoSelectionError.invalidCount }
         try Task.checkCancellation()
         guard directory.isFileURL else { throw PhotoSelectionError.preparationFailed }
@@ -87,11 +87,14 @@ final class PickerFileCopyOperation: @unchecked Sendable {
         self.imageNumber = imageNumber
     }
 
-    func load(start: (@escaping Completion) -> Progress) async throws -> URL {
+    // Register the UI-owned provider on its caller's actor. Its Sendable
+    // completion still copies on the provider callback queue under the lock.
+    @MainActor
+    func load(start: @MainActor (@escaping Completion) -> Progress) async throws -> URL {
         try await withTaskCancellationHandler {
             let copiedURL: URL = try await withCheckedThrowingContinuation { continuation in
                 guard install(continuation) else { return }
-                let progress = start { url, error in self.complete(url: url, error: error) }
+                let progress = start { [weak self] url, error in self?.complete(url: url, error: error) }
                 install(progress)
             }
             if Task.isCancelled {

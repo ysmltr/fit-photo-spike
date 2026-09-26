@@ -1,6 +1,6 @@
 # Manual signed TestFlight upload
 
-Status: prepared and checked with synthetic tests on Windows. A real Xcode
+Status for this changed source: a real Xcode
 archive, signed export, Apple upload, Apple processing and physical-iPhone test
 have **not** been performed by this implementation session.
 
@@ -11,7 +11,7 @@ workflow and unsigned device-build workflow are unchanged.
 
 ## Files and project settings
 
-New release files:
+Release files:
 
 - `.github/workflows/testflight-upload.yml`
 - `Scripts/testflight_release.py` — private workspace, keychain, archive, export,
@@ -23,16 +23,13 @@ New release files:
 - `FitPhotoSpike/Assets.xcassets/` — opaque 1024×1024 app icon; Xcode generates the
   required device sizes. App Store distribution requires an app icon.
 
-The only existing project changes add the icon catalog to the app's resources
-and set `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` for Debug and Release.
-`Scripts/verify_project.py` now recognizes asset catalog directory references.
-No Swift implementation, test cases, entitlements, permissions or capabilities
-were changed. The app remains a temporary-output AppIntent with no Photos writes.
-
-The existing shared scheme is `FitPhotoSpike`. Before these changes the app
-target used automatic signing, an empty team, marketing version `0.1.0`, and
-build number `1`. These settings and its existing bundle identifier remain in
-`FitPhotoSpike.xcodeproj/project.pbxproj` unchanged.
+The existing shared scheme is `FitPhotoSpike`. The app remains iPhone-only with
+marketing version `0.1.0` and stored project build `10.1.0`. Its bundle identifier,
+signing setup and add-only Photos permission are preserved. The app uses the
+system photo picker, renders on-device, and saves new copies only after an
+explicit **Save All** tap. The release driver overrides the stored build number
+at run time using the selection described below; no future release number is
+hardcoded or reserved in this source.
 
 On the runner, the driver reads the resolved **Release** settings using
 `xcodebuild -showBuildSettings -json`. If a project team is configured, it must
@@ -76,7 +73,7 @@ valid dates. Development, Ad Hoc, enterprise and wildcard App ID profiles fail.
 ## Run from GitHub or Windows
 
 1. Merge these files into the repository's default branch. Preserve any existing
-   account-specific project settings when merging the icon resource changes.
+   account-specific project settings when reviewing source changes.
 2. In **Settings → Environments**, create or configure `testflight`. Restrict its
    deployment branches to the default branch. Required reviewers are optional.
    The existing repository secrets work; no additional secret name is required.
@@ -84,7 +81,7 @@ valid dates. Development, Ad Hoc, enterprise and wildcard App ID profiles fail.
    `RUNNER_DEBUG=1` before the step that receives signing secrets.
 4. Open **Actions → Signed TestFlight upload → Run workflow**. Select the default
    branch and click **Run workflow**.
-5. The first job runs release-helper tests and the unchanged existing Simulator
+5. The first job runs release-helper tests and the existing Simulator
    build/test script. Only a successful first job permits the signing job to run
    on a fresh GitHub-hosted macOS runner.
 
@@ -93,13 +90,11 @@ existing CI. It does not silently choose a beta or a different Xcode if that
 version becomes unavailable. Update the pin deliberately when Apple's upload
 requirements or the hosted runner image changes.
 
-Optional PowerShell commands, from your existing local Git repository:
+After separately reviewing and applying source changes and listed deletions,
+use these optional PowerShell commands from the existing local repository.
+They deliberately trigger an upload workflow; this handoff does not run them.
 
 ```powershell
-git add .github/workflows/testflight-upload.yml Scripts/testflight_release.py Scripts/testflight_signing.py Scripts/testflight_connect.py Scripts/Tests TESTFLIGHT_UPLOAD.md FitPhotoSpike/Assets.xcassets FitPhotoSpike.xcodeproj/project.pbxproj Scripts/verify_project.py
-git diff --cached --stat
-git commit -m "Add isolated manual signed TestFlight upload"
-git push
 gh workflow run testflight-upload.yml
 gh run list --workflow testflight-upload.yml --limit 5
 $runId = Read-Host 'Enter the new run ID from the list'
@@ -141,14 +136,14 @@ credentials, extra signing secrets or a saved runner keychain.
    bundle ID, unchanged marketing version, chosen build number, valid code
    signature, exact distribution certificate, matching embedded profile and
    minimal permitted entitlements. Inspect Mach-O CPU and platform load commands
-   to require **arm64 iPhoneOS**, rejecting an arm64 Simulator binary. Require
-   generated App Intents metadata for **Fit Photos to 4:5**.
-6. Run `xcrun altool --validate-app`, recheck build-number availability, then run
-   `xcrun altool --upload-app`. Both use API key authentication and structured
-   output. Nonzero exit, malformed response or reported errors stop the workflow.
-   There is no automatic upload retry.
+   to require **arm64 iPhoneOS**, rejecting an arm64 Simulator binary.
+6. Recheck build-number availability immediately before Apple validation. Run
+   `xcrun altool --validate-app`, then `xcrun altool --upload-app`. Both use API key
+   authentication and structured output. Nonzero exit, malformed response or
+   reported errors stop the workflow. Apple remains authoritative for duplicate
+   submissions after the preflight check. There is no automatic upload retry.
 
-These checks reuse the existing device metadata/Mach-O inspection functions;
+These checks reuse the existing device Mach-O inspection functions;
 the unsigned-device validator itself is not used on a signed app.
 
 ## Build-number uniqueness
@@ -249,29 +244,23 @@ certificate, bundle and team again. Do not commit any downloaded signing file.
 
 Synthetic helper tests and project/workflow checks run on Windows. They do not
 exercise Xcode, Security.framework, real credentials or Apple's servers. The
-first GitHub run must prove Simulator tests, actual certificate import, archive,
-App Store export, signed-app checks and upload all work with your account.
+delivery report records the tests actually run for this review. Previous release
+success does not prove that this changed source builds or passes physical tests.
+No upload has been triggered for this handoff.
 
-Local validation on 2026-09-18: **116 synthetic helper tests passed**. All three
-workflow YAML files passed static checks. Project references, XML/plists and
-source policy checks passed. SHA-256 comparisons confirmed both existing
-workflow files are byte-for-byte unchanged; the only changed baseline files are
-the icon's project wiring and the asset-catalog-aware project verifier. All 30
-existing native XCTest methods remain present; Windows did not execute them.
-
-To repeat the new helper tests from the repository root:
+To repeat the release-helper tests from the repository root:
 
 ```powershell
-python -m unittest discover -s Scripts/Tests -p 'test_testflight_*.py'
-python Scripts/verify_project.py
+python -B -m unittest discover -s Scripts/Tests -p 'test_testflight_*.py'
+python -B Scripts/verify_project.py
 ```
 
-After Apple processing succeeds, install through TestFlight on a real iPhone,
-open the app once, then perform the existing `PHYSICAL_DEVICE_TEST.md` checklist.
-Verify Shortcuts discovers **Fit Photos to 4:5**, accepts Select Photos and Share
-Sheet inputs, returns 1–20 correctly oriented 4:5 outputs to Share, and does not
-write duplicate photos. Output lifetime/cleanup, large-image memory behavior and
-cross-app sharing remain physical-device tests. **Physical validation is pending.**
+After a separately authorized release completes Apple processing, install the
+reviewed build through TestFlight and follow `PHYSICAL_DEVICE_TEST.md`. Verify
+ordered 1–20 selection, all four ratios, previews, whole-batch native Share,
+explicit add-only Save All, unchanged originals, cancellation and session
+cleanup. Large-image memory behavior and cross-app sharing require device
+observations. **Physical validation is pending for this changed build.**
 
 ## References
 

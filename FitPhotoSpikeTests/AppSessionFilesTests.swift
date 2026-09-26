@@ -26,16 +26,73 @@ final class AppSessionFilesTests: XCTestCase {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let old = try AppSessionFiles(root: root)
-        let foreign = root.appendingPathComponent("FitPhotosOutputs", isDirectory: true)
+        let foreign = root.appendingPathComponent("unrelated-files", isDirectory: true)
         let malformed = root.appendingPathComponent("batch-not-a-uuid", isDirectory: true)
         try FileManager.default.createDirectory(at: foreign, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: malformed, withIntermediateDirectories: true)
-        let foreignFile = foreign.appendingPathComponent("shortcut.jpeg")
+        let foreignFile = foreign.appendingPathComponent("unrelated.jpeg")
         try Data([9]).write(to: foreignFile)
         AppSessionFiles.removeAbandonedBatches(in: root)
         XCTAssertFalse(FileManager.default.fileExists(atPath: old.directory.path))
         XCTAssertEqual(try Data(contentsOf: foreignFile), Data([9]))
         XCTAssertTrue(FileManager.default.fileExists(atPath: malformed.path))
+    }
+
+    func testReleasingLastSessionOwnerRemovesStagedInputsAndOutputs() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var session: AppSessionFiles? = try AppSessionFiles(root: root)
+        weak var weakSession = session
+        let directory = try XCTUnwrap(session?.directory)
+        let source = try XCTUnwrap(session?.inputDirectory).appendingPathComponent("synthetic.png")
+        let outputDirectory = try XCTUnwrap(session?.outputDirectory)
+        try Data([1]).write(to: source)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+        try Data([2]).write(to: outputDirectory.appendingPathComponent("synthetic.jpeg"))
+        session = nil
+        XCTAssertNil(weakSession)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+    }
+
+    @MainActor
+    func testSharePresentationRetainsSessionOnlyUntilItIsReleased() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var session: AppSessionFiles? = try AppSessionFiles(root: root)
+        weak var weakSession = session
+        let directory = try XCTUnwrap(session?.directory)
+        var presentation: BatchShareSheet.SharePresentationController? = .init(
+            urls: [], session: session, onCompletion: { _ in })
+        session = nil
+        withExtendedLifetime(presentation) {
+            XCTAssertNotNil(weakSession)
+            XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
+        }
+        presentation = nil
+        XCTAssertNil(weakSession)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+    }
+
+    @MainActor
+    func testWorkerRetainsSessionUntilJoinedAfterOwnerReleasesIt() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var session: AppSessionFiles? = try AppSessionFiles(root: root)
+        weak var weakSession = session
+        let directory = try XCTUnwrap(session?.directory)
+        let gate = AsyncStream<Void>.makeStream()
+        var worker: Task<Void, Never>? = Task { [session] in
+            defer { withExtendedLifetime(session) {} }
+            for await _ in gate.stream { break }
+        }
+        session = nil
+        XCTAssertNotNil(weakSession)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
+        gate.continuation.finish()
+        await worker?.value
+        worker = nil
+        XCTAssertNil(weakSession)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
     }
 
     func testIndependentSessionsUseDistinctPaths() throws {

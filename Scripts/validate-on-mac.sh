@@ -18,7 +18,7 @@ Requires macOS, full Xcode, python3, and an installed compatible iOS runtime.
 No Apple signing account or signing secrets are needed for Simulator tests.
 Evidence: ValidationRuns/<UTC timestamp>-<PID>/ (logs, metadata, xcresult).
 DerivedData stays in that directory locally but is excluded from CI artifacts.
-This command does not validate physical-iPhone PhotoKit/Shortcuts behavior.
+This command does not validate physical-iPhone selection, saving or sharing.
 USAGE
 }
 
@@ -69,7 +69,6 @@ trap finish EXIT
     printf 'Started UTC: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     printf 'Developer directory: %s\nExpected Xcode: %s\n' "$DEVELOPER_DIR" "$expected_version"
     printf 'Project: %s\nScheme: FitPhotoSpike\nScope: Simulator build and ALL scheme tests; no physical-device validation.\n' "$project_path"
-    printf 'AppIntentsTesting: unsupported on stable Xcode 26.6; requires Xcode 27/iOS 27 beta.\n'
     sw_vers
     uname -m
 } > "$run_dir/run-info.txt"
@@ -133,4 +132,4 @@ run_logged test xcodebuild test \
     CODE_SIGNING_ALLOWED=NO
 
 printf 'App build and test command succeeded. Review test.xcresult for executed/skipped tests.\n'
-printf 'Real iPhone Shortcuts sharing, file lifetime, and memory validation remain pending in PHYSICAL_DEVICE_TEST.md.\n'
+printf 'Real iPhone selection, saving, sharing, file lifetime, and memory validation remain pending in PHYSICAL_DEVICE_TEST.md.\n'

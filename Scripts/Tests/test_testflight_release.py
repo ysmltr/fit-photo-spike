@@ -411,10 +411,9 @@ class DriverTests(unittest.TestCase):
         (app / "FitPhotoSpike").write_bytes(b"synthetic Mach-O")
         return app
 
-    def check_rejected_app(self, app, code, macho_error=None, metadata_error=None):
+    def check_rejected_app(self, app, code, macho_error=None):
         tool = Mock(work=self.work)
-        with patch.object(release, "inspect_macho", side_effect=macho_error), \
-                patch.object(release, "inspect_metadata", side_effect=metadata_error):
+        with patch.object(release, "inspect_macho", side_effect=macho_error):
             with self.assertRaisesRegex(release.ReleaseError, code):
                 release.verify_signed_app(tool, app, SETTINGS, "1.1.0", SimpleNamespace(), b"certificate", "Archive")
         tool.run.assert_not_called()
@@ -432,10 +431,7 @@ class DriverTests(unittest.TestCase):
         self.check_rejected_app(self.make_app(CFBundleVersion="1.0.0"), "SIGNED_VERSION_MISMATCH")
 
     def test_rejects_wrong_binary_architecture_without_raw_exception(self):
-        self.check_rejected_app(self.make_app(), "DEVICE_BINARY_OR_APPINTENTS_METADATA_INVALID", macho_error=ValueError(SENSITIVE))
-
-    def test_rejects_missing_app_intents_metadata_without_raw_exception(self):
-        self.check_rejected_app(self.make_app(), "DEVICE_BINARY_OR_APPINTENTS_METADATA_INVALID", metadata_error=ValueError(SENSITIVE))
+        self.check_rejected_app(self.make_app(), "DEVICE_BINARY_INVALID", macho_error=ValueError(SENSITIVE))
 
     def test_ipa_path_traversal_rejected_before_extraction(self):
         ipa = self.work / "signed.ipa"

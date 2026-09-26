@@ -1,7 +1,6 @@
 import Foundation
 
-/// Fixed output choices for the standalone app. The existing Shortcut keeps
-/// its source-dependent 4:5 sizing through ImageRenderer's original overload.
+/// Fixed output choices for the standalone photo workflow.
 enum OutputRatio: String, CaseIterable, Identifiable, Sendable {
     case fourFive
     case threeFour

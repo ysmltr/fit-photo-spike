@@ -1,8 +1,9 @@
 import Foundation
 
 /// Owns staged picker copies and converted files for one foreground batch.
-/// Separate from the intent's FitPhotosOutputs, which Shortcuts owns.
-struct AppSessionFiles: Sendable {
+/// The model, active worker, and share presentation retain this owner only
+/// while its files are needed. The last owner releases the whole session.
+final class AppSessionFiles: Sendable {
     let directory: URL
     var inputDirectory: URL { directory.appendingPathComponent("Inputs", isDirectory: true) }
     var outputDirectory: URL { directory.appendingPathComponent("Outputs", isDirectory: true) }
@@ -17,11 +18,13 @@ struct AppSessionFiles: Sendable {
         try FileManager.default.createDirectory(at: inputDirectory, withIntermediateDirectories: true)
     }
 
+    deinit { removeAll() }
+
     func removeOutputs() { try? FileManager.default.removeItem(at: outputDirectory) }
     func removeAll() { try? FileManager.default.removeItem(at: directory) }
 
     /// Once per process, before any UI batch exists. Never on backgrounding,
-    /// while sharing, or from the intent. OS cleanup also applies to temp files.
+    /// or while sharing. OS cleanup also applies to temp files.
     @MainActor private static var preparedForLaunch = false
     @MainActor static func prepareForAppLaunch() {
         guard !preparedForLaunch else { return }

@@ -1,48 +1,60 @@
-# V1 validation evidence
+# Validation
 
-The source baseline is the user-provided `FitPhotos-Astra-Source.zip`, without `.git`. No GitHub commit comparison was possible or claimed. This work modifies an extracted review copy only; no commit, push, workflow dispatch, TestFlight upload, or App Store submission is part of this handoff.
+This review copy preserves the standalone app's four ratios, ordered 1–20 selection, preview, explicit Save All, and native Share. The iPhone target and marketing version `0.1.0` remain. The project build stays `10.1.0`; the release driver still calculates a new upload build at run time. No commit, push, workflow run, upload, or submission is part of this handoff.
 
-## Current status
+## Evidence boundary
 
-| Check | Status / boundary |
+| Check | Status for this review copy |
 | --- | --- |
-| Synthetic V1 source-policy regressions | PASS: 13 Python tests on Windows. No Photos data, Apple calls, network, or credentials. |
-| Full project references, plists, and source policy | PASS: 91 project objects; all 17 app Swift files and 10 test Swift files included exactly once. XML and property lists parsed. This is static validation, not compilation. |
-| Native app build / Swift compiler | NOT RUN: Windows has no Xcode or iOS SDK. |
-| Swift XCTest execution | NOT RUN for this V1 handoff. 70 XCTest methods are present; none are counted as executed or passed. Tests require macOS and Xcode. |
-| Existing Simulator workflow | Preserved from source ZIP; no run triggered for V1. Earlier passing CI does not establish that these changes build. |
-| New standalone picker → ratio → preview → Save All / Share | PENDING real-iPhone test. |
-| Existing installed Shortcut | User reports successful conversion and saving of 20 ordinary photos before V1. That observation does not verify the new build. |
-| Share-sheet Shortcut input | Earlier empty-input failure remains a separate transport/configuration question; V1 does not assume that issue is resolved. |
-| Signing / release workflow | Source-ZIP comparison passed for all 14 protected files, including workflows and the AppIntent adapter. Every inherited Xcode build-configuration block is unchanged. No credentials or signed IPA included. |
+| Project references, source membership, XML/plists, and source policy | PASS on Windows: 82 project objects; 15 app Swift files and 8 test Swift files included exactly once. |
+| Synthetic Python helper and policy regressions | PASS: 204 tests, 0 failures, 0 errors, 0 skips. No real credentials, photos, or Apple API calls were used. |
+| Shell syntax | PASS for `Scripts/validate-on-mac.sh` and `Scripts/build-unsigned-device.sh`. |
+| Native app build and Swift XCTest execution | NOT RUN in this Windows workspace; Xcode and the iOS SDK are unavailable. 48 XCTest methods are present, including 6 new lifetime checks; none were executed here. |
+| Existing Simulator workflow | Retained; no run triggered for this change. A prior passing run does not establish that this copy builds. |
+| Signed archive / exported IPA / Apple validation | NOT RUN for this change. Existing signing checks and dynamic build numbering remain. |
+| Compiled app/archive resource inspection | NOT RUN on Windows; no native application artifact was generated. |
+| Current standalone iPhone behavior | PENDING on the changed build, even where earlier builds were tested. |
+| Runtime memory, cancellation, and file lifetime | Source audit and applicable synthetic tests are partial evidence. Device/Instruments checks remain PENDING. |
 
-## What the source-policy tests establish
+The portable results above were recorded for this review on 2026-09-26. An executed Python test, an inspected native test method, and a passed native XCTest are different evidence. Do not count methods present in source as executed tests or mark skipped cases passed.
 
-The verifier distinguishes the native `PhotosUI` picker from full PhotoKit access. It permits `Photos` only in `Platform/PhotoLibrarySaver.swift`, requires an add-only usage description and add-only authorization, and confines the new-image path to `PHAssetCreationRequest.forAsset()` followed by adding a `.photo` file resource in one batch transaction. Synthetic regressions reject full-library permissions, original-asset access/mutations, other PhotoKit types and resource paths, extra save transactions, networking APIs, saver access from the AppIntent, and drift in the installed Shortcuts contract.
+## Reproduce portable checks
 
-The only added Info.plist permission description is `NSPhotoLibraryAddUsageDescription`. The bundle identifier, AppIntent interface, legacy Shortcuts output sizing, signing settings, and release workflows are preserved. The shared renderer also accepts the standalone app's fixed output canvas sizes.
-
-These are static guardrails, not proof of runtime privacy or authorization behavior. The manual tests must still establish that Save All is initiated only by a user tap, the full batch is passed to Share, and originals remain unchanged.
-
-## Reproduce checks
-
-Windows, from the extracted project root:
+From the project root on Windows:
 
 ```powershell
 python -B Scripts/verify_project.py
-python -B -m unittest discover -s Scripts/Tests -p test_v1_project_policy.py -v
+python -B -m unittest discover -s Scripts/Tests -p 'test_*.py'
 ```
 
-macOS, using the toolchain already pinned by the source project:
+The verifier checks project integrity and restricted photo-access policy. PhotoKit access is confined to `Platform/PhotoLibrarySaver.swift`: add-only authorization and creation of new photo resources. The picker supplies selected files; original-asset lookup and editing are not part of the app. Static guardrails do not replace observing permission prompts or checking unchanged originals.
+
+With Bash available, check shell syntax:
+
+```sh
+bash -n Scripts/validate-on-mac.sh
+bash -n Scripts/build-unsigned-device.sh
+```
+
+## Native validation
+
+On a Mac with the toolchain pinned by the project:
 
 ```sh
 bash Scripts/validate-on-mac.sh
 ```
 
-That existing driver builds for iOS Simulator and runs all tests in the shared `FitPhotoSpike` scheme. Inspect `.xcresult` for executed/skipped tests. Do not treat a static policy pass as an Xcode pass, a skipped native test as a pass, or simulator results as evidence of real-device permission, sharing, memory, or Shortcuts delivery.
+The driver builds for an iPhone Simulator and runs the complete shared-scheme test suite. Inspect `.xcresult` for actual execution, failures, and skips. Record the source revision, toolchain, runtime, and test counts. Review compiler concurrency/ownership warnings instead of suppressing them.
 
-The inherited workflow summary still describes the previous no-Photos-access utility. Workflows remain untouched as requested; V1 adds only explicit add-only saving, described in `README.md` and `V1_DEVICE_TEST.md`.
+Before release, verify the generated app's `UIDeviceFamily` contains only `1`, check the archive's resources, and perform [V1_DEVICE_TEST.md](V1_DEVICE_TEST.md). Test supported minimum and current iOS versions where available. iPhone-only native targeting does not promise that iOS prevents every iPad compatibility-mode installation.
 
-## Before accepting or releasing V1
+Use Xcode Instruments Allocations/Leaks and a memory graph on repeated 20-image batches, cancellation, Save All, share dismissal, and New Batch. Check that a previous batch's files and decoded thumbnails are released when their last user ends. File deletion is best effort and iOS controls process termination; source inspection does not guarantee zero leaks or prove physical cleanup.
 
-Run native compilation and all scheme tests, then perform `V1_DEVICE_TEST.md` on the reviewed build. Record the exact installed version/build, iPhone model, iOS version, and each outcome. Keep unsupported-image, low-memory/interruption, denial/retry, full-batch saving/sharing, original preservation, and existing-Shortcut compatibility checks pending until observed.
+## Record real results
+
+| Source revision / installed build | Toolchain / device | Check | Result | Date / evidence |
+| --- | --- | --- | --- | --- |
+| NOT RECORDED | NOT RECORDED | Native build and tests | NOT RUN | PENDING |
+| NOT RECORDED | NOT RECORDED | Physical acceptance and memory | NOT RUN | PENDING |
+
+Keep personal photos, credentials, private paths, and raw signing logs out of reports. The signed release workflow retains its no-artifact-upload policy; unsigned Simulator/device diagnostics are separate workflows.

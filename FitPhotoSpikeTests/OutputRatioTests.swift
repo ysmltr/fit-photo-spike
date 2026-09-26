@@ -39,17 +39,6 @@ final class OutputRatioTests: XCTestCase {
         }
     }
 
-    func testFixedSizingDoesNotChangeLegacyShortcutSizing() throws {
-        let legacy = try CanvasGeometry(sourceWidth: 101, sourceHeight: 77)
-        XCTAssertEqual(legacy.width, 104)
-        XCTAssertEqual(legacy.height, 130)
-        XCTAssertEqual(legacy.scale, 1)
-        let app = try CanvasGeometry(sourceWidth: 101, sourceHeight: 77, ratio: .fourFive)
-        XCTAssertEqual(app.width, 1080)
-        XCTAssertEqual(app.height, 1350)
-        XCTAssertGreaterThan(app.scale, 1)
-    }
-
     func testInvalidSourcesAreRejectedForEveryRatio() {
         for ratio in OutputRatio.allCases {
             XCTAssertThrowsError(try CanvasGeometry(sourceWidth: 0, sourceHeight: 10, ratio: ratio))

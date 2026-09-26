@@ -41,7 +41,7 @@ struct ContentView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if model.outputs.isEmpty {
                         Button { showsHelp = true } label: { Image(systemName: "info.circle") }
-                            .accessibilityLabel("About Fit Photos and Shortcuts")
+                            .accessibilityLabel("About Fit Photos")
                             .disabled(model.isBusy)
                     } else {
                         Button("New Batch") { showsStartOver = true }.disabled(model.isBusy)
@@ -61,13 +61,13 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showsShare) {
-            BatchShareSheet(urls: model.outputs) { _ in showsShare = false }
+            BatchShareSheet(urls: model.outputs, session: model.session) { _ in showsShare = false }
                 .interactiveDismissDisabled()
         }
         .sheet(item: $preview) { selection in
             PhotoPreview(urls: model.outputs, initialIndex: selection.index)
         }
-        .sheet(isPresented: $showsHelp) { shortcutsHelp }
+        .sheet(isPresented: $showsHelp) { about }
         .alert(item: $model.message) { message in
             if message.offersSettings {
                 return Alert(title: Text(message.title), message: Text(message.text),
@@ -154,7 +154,7 @@ struct ContentView: View {
 
     private var results: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("\(model.outputs.count) ready · \(model.ratio.title)").font(.headline)
+            Text("\(model.outputs.count) ready Â· \(model.ratio.title)").font(.headline)
                 .accessibilityAddTraits(.isHeader)
             Text("Review your photos, then save or share the whole batch.").foregroundStyle(.secondary)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 16)], spacing: 16) {
@@ -182,7 +182,7 @@ struct ContentView: View {
                 .buttonStyle(FitPrimaryButtonStyle()).disabled(model.isBusy)
                 .accessibilityLabel("Share all \(model.outputs.count) photos")
             Button { model.saveAll() } label: {
-                Label(model.savedToPhotos ? "Saved to Photos" : model.work == .saving ? "Saving…" : "Save All",
+                Label(model.savedToPhotos ? "Saved to Photos" : model.work == .saving ? "Savingâ€¦" : "Save All",
                       systemImage: model.savedToPhotos ? "checkmark" : "square.and.arrow.down")
                     .frame(maxWidth: .infinity, minHeight: 44)
             }.buttonStyle(.bordered).disabled(model.isBusy || model.savedToPhotos)
@@ -196,11 +196,11 @@ struct ContentView: View {
     private var progress: some View {
         VStack(alignment: .leading, spacing: 12) {
             if model.work == .saving {
-                ProgressView("Saving all photos…")
+                ProgressView("Saving all photosâ€¦")
                 Text("Keep Fit Photos open until saving finishes.").font(.footnote)
             } else {
                 ProgressView(value: Double(model.completed), total: Double(max(1, model.total)))
-                Text(model.isCancelling ? "Cancelling…" : "\(model.work == .importing ? "Loading" : "Converting") \(min(model.completed + 1, model.total)) of \(model.total)")
+                Text(model.isCancelling ? "Cancellingâ€¦" : "\(model.work == .importing ? "Loading" : "Converting") \(min(model.completed + 1, model.total)) of \(model.total)")
                     .font(.headline)
                 Button("Cancel") { model.cancel() }.disabled(model.isCancelling).frame(minHeight: 44)
             }
@@ -209,29 +209,13 @@ struct ContentView: View {
         .background(Color(uiColor: .secondarySystemGroupedBackground))
     }
 
-    private var shortcutsHelp: some View {
+    private var about: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Your photos stay yours").font(.headline).accessibilityAddTraits(.isHeader)
-                        Text("Only the photos you select. Processing stays on your device; Fit Photos never uploads your images.")
-                        Text("Originals stay unchanged. New copies are saved to Photos only when you choose to save them.")
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Shortcuts, if you want").font(.headline).accessibilityAddTraits(.isHeader)
-                        Text("Fit Photos works on its own. You can also use Fit Photos to 4:5 in Shortcuts, then pass its results to Share or another action.")
-                    }
-                    Button("Open Shortcuts") {
-                        if let url = URL(string: "shortcuts://") {
-                            openURL(url) { accepted in
-                                if !accepted {
-                                    showsHelp = false
-                                    model.message = FitPhotosMessage(title: "Unable to open Shortcuts", text: "Install or open Apple's Shortcuts app, then add Fit Photos to 4:5.")
-                                }
-                            }
-                        }
-                    }.buttonStyle(.bordered).controlSize(.large)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your photos stay yours").font(.headline).accessibilityAddTraits(.isHeader)
+                    Text("Only the photos you select. Processing stays on your device; Fit Photos never uploads your images.")
+                    Text("Originals stay unchanged. New copies are saved to Photos only when you choose to save them.")
                 }
                 .font(.body)
                 .fixedSize(horizontal: false, vertical: true)

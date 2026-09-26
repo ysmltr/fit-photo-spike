@@ -64,7 +64,6 @@ class CertificateExtractionTests(unittest.TestCase):
         tool.run.side_effect = fake_run
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output), \
                 patch.object(release, "inspect_macho"), \
-                patch.object(release, "inspect_metadata"), \
                 patch.object(release, "read_profile", return_value={}) as read_profile, \
                 patch.object(release, "validate_profile", return_value=self.identity), \
                 patch.object(release, "validate_signed_entitlements") as entitlements:
