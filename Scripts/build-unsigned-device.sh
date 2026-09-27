@@ -5,7 +5,7 @@ set -euo pipefail
 if [ "${1:-}" = '--help' ] && [ "$#" -eq 1 ]; then
     printf '%s\n' 'Usage: bash Scripts/build-unsigned-device.sh' \
         'Requires macOS and Xcode 26.6. Builds an unsigned arm64 iPhoneOS app,' \
-        'checks generated App Intents metadata, and packages Payload/FitPhotoSpike.app.' \
+        'verifies the device binary, and packages Payload/FitPhotoSpike.app.' \
         'Outputs: DeviceBuildRuns/<timestamp>-<PID>/Artifacts/. No device test is run.'
     exit 0
 fi
@@ -75,12 +75,6 @@ run_logged executable-file /usr/bin/file "$executable"
 run_logged executable-architectures xcrun lipo -archs "$executable"
 run_logged executable-platform xcrun vtool -show-build "$executable"
 
-# Diagnostic uploads exclude DerivedData, so preserve generated metadata even
-# if an SDK format change makes the next verification step fail.
-if [ -d "$app_path/Metadata.appintents" ]; then
-    run_logged metadata-diagnostics /usr/bin/ditto "$app_path/Metadata.appintents" "$run_dir/AppIntentsMetadata"
-fi
-
 # arm64 alone is insufficient: arm64 Simulator binaries must be rejected.
 run_logged device-verification python3 "$script_dir/verify_device_app.py" \
     --app "$app_path" --report "$run_dir/device-app-verification.json"
@@ -115,5 +109,5 @@ run_logged ipa-verification python3 "$script_dir/verify_device_ipa.py" \
     cd "$artifact_dir"
     /usr/bin/shasum -a 256 FitPhotoSpike-unsigned.ipa > FitPhotoSpike-unsigned.ipa.sha256
 )
-printf 'Confirmed arm64 iPhoneOS executable and packaged App Intents metadata.\n'
+printf 'Confirmed arm64 iPhoneOS executable and verified IPA contents.\n'
 printf 'Unsigned IPA: %s\nRe-signing/install/physical tests: NOT RUN\n' "$ipa_path"

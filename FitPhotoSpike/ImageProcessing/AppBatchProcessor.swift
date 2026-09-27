@@ -37,7 +37,7 @@ enum AppBatchProcessingError: LocalizedError, Equatable, Sendable {
 }
 
 /// The app owns the supplied output directory and the returned files' lifetime.
-/// Rendering is sequential on a background task, with at most one decoded
+/// Rendering is sequential in one structured child task, with at most one decoded
 /// input in flight. Failure/cancellation deletes only this call's outputs.
 /// Inputs are never deleted, including when they reside in outputDirectory.
 struct AppBatchProcessor: Sendable {
@@ -51,29 +51,31 @@ struct AppBatchProcessor: Sendable {
     }
 
     func process(_ inputs: [URL], ratio: OutputRatio, outputDirectory: URL,
-                 progress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }) async throws -> [URL] {
+                 progress: @escaping @Sendable (Int, Int) async -> Void = { _, _ in }) async throws -> [URL] {
         guard (1...Self.maximumImageCount).contains(inputs.count) else {
             throw AppBatchProcessingError.invalidImageCount(inputs.count)
         }
         try Task.checkCancellation()
-        let worker = Task.detached(priority: .userInitiated) {
-            try self.processSequentially(inputs, ratio: ratio, outputDirectory: outputDirectory,
-                                         progress: progress)
-        }
-        return try await withTaskCancellationHandler {
-            let outputs = try await worker.value
-            if Task.isCancelled {
-                Self.removeOutputs(outputs)
-                throw CancellationError()
+        return try await withThrowingTaskGroup(of: [URL].self) { group in
+            // Task-group children do not inherit MainActor isolation. The
+            // group joins its only child and propagates caller cancellation.
+            group.addTask(priority: .userInitiated) {
+                try await self.processSequentially(inputs, ratio: ratio, outputDirectory: outputDirectory,
+                                                   progress: progress)
             }
-            return outputs
-        } onCancel: {
-            worker.cancel()
+            for try await outputs in group {
+                if Task.isCancelled {
+                    Self.removeOutputs(outputs)
+                    throw CancellationError()
+                }
+                return outputs
+            }
+            throw CancellationError()
         }
     }
 
     private func processSequentially(_ inputs: [URL], ratio: OutputRatio, outputDirectory: URL,
-                                     progress: @Sendable (Int, Int) -> Void) throws -> [URL] {
+                                     progress: @Sendable (Int, Int) async -> Void) async throws -> [URL] {
         try Task.checkCancellation()
         guard outputDirectory.isFileURL else { throw AppBatchProcessingError.outputUnavailable }
         // Reject nonlocal inputs before touching any output. The processor
@@ -91,7 +93,7 @@ struct AppBatchProcessor: Sendable {
         var ownedOutputs: [URL] = []
         var succeeded = false
         defer { if !succeeded { Self.removeOutputs(ownedOutputs) } }
-        progress(0, inputs.count)
+        await progress(0, inputs.count)
 
         for (index, input) in inputs.enumerated() {
             try Task.checkCancellation()
@@ -116,7 +118,7 @@ struct AppBatchProcessor: Sendable {
                                                          reason: Self.failureReason(error))
             }
             try Task.checkCancellation()
-            progress(index + 1, inputs.count)
+            await progress(index + 1, inputs.count)
         }
         try Task.checkCancellation()
         succeeded = true

@@ -75,7 +75,6 @@ def verify_ipa(app, ipa, app_report):
         'all_packaged_bytes_match_verified_app': True,
         're_signing': 'not_run',
         'physical_device_testing': 'not_run',
-        'shortcuts_discovery': 'not_run',
     }
 
 

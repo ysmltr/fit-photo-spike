@@ -225,6 +225,39 @@ final class AppBatchProcessorTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: outputs.path))
     }
 
+    @MainActor
+    func testMainActorProgressIsDeliveredInOrderBeforeProcessReturns() async throws {
+        let target = try XCTUnwrap(outputs)
+        let input = try XCTUnwrap(directory).appendingPathComponent("synthetic.png")
+        let processor = AppBatchProcessor { _, output, _ in
+            XCTAssertFalse(Thread.isMainThread)
+            try Data([1]).write(to: output)
+        }
+        var progress: [Int] = []
+        let results = try await processor.process([input, input], ratio: .fourFive, outputDirectory: target) {
+            @MainActor done, _ in
+            XCTAssertTrue(Thread.isMainThread)
+            progress.append(done)
+        }
+        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(progress, [0, 1, 2])
+    }
+
+    func testCancellationDuringFinalProgressRemovesFinishedOutputs() async throws {
+        let input = try XCTUnwrap(directory).appendingPathComponent("synthetic.png")
+        let target = try XCTUnwrap(outputs)
+        let processor = AppBatchProcessor { _, output, _ in
+            try Data([1]).write(to: output)
+        }
+        do {
+            _ = try await processor.process([input], ratio: .square, outputDirectory: target) { done, _ in
+                if done == 1 { withUnsafeCurrentTask { $0?.cancel() } }
+            }
+            XCTFail("A cancelled child must not return successful files.")
+        } catch is CancellationError {}
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: target.path), [])
+    }
+
     func testSeparateRunsKeepEarlierSuccessfulOutputsReadable() async throws {
         let input = directory.appendingPathComponent("original.png")
         try ImageTestFixture.pngData().write(to: input)

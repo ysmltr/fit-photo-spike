@@ -129,16 +129,6 @@ final class FixedOutputRendererTests: XCTestCase {
         }
     }
 
-    func testOriginalRendererEntryPointStillReturnsSourceDependentFourByFive() throws {
-        let input = try write(quadrants(CGRect(x: 0, y: 0, width: 160, height: 100)), type: .png)
-        let legacy = try renderer.render(inputURL: input, outputURL: freshURL())
-        XCTAssertEqual(legacy.width, 160)
-        XCTAssertEqual(legacy.height, 200)
-        let app = try renderer.render(inputURL: input, outputURL: freshURL(), ratio: .fourFive)
-        XCTAssertEqual(app.width, 1080)
-        XCTAssertEqual(app.height, 1350)
-    }
-
     private func quadrants(_ bounds: CGRect) -> CIImage {
         let halfWidth = bounds.width / 2
         let halfHeight = bounds.height / 2

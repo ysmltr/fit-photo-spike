@@ -17,7 +17,7 @@ def check_source_policy(sources, info):
     prohibited = [
         r'\bURLSession\b', r'\bURLRequest\b', r'\bNWConnection\b',
         r'^\s*import\s+(?:Network|CFNetwork)\s*$',
-        r'\bCryptoKit\b', r'\bTestPhotoAssetIdentityIntent\b',
+        r'\bCryptoKit\b',
         r'\bFitViewModel\b', r'\bFitAdjustment\b',
         r'\bPHAsset\b', r'\bPHAssetResource\w*\b', r'\bPHAssetCollection\w*\b',
         r'\bPHAssetChangeRequest\b',
@@ -62,20 +62,6 @@ def check_source_policy(sources, info):
         'NEW_ASSET_CREATION_ONLY'
     assert len(re.findall(r'\bperformChanges\s*\{', saver)) == 1, 'SINGLE_SAVE_TRANSACTION'
 
-    intent = sources['AppIntents/FitPhotosIntent.swift']
-    for required in [
-        'struct FitPhotosIntent: AppIntent',
-        'static let title: LocalizedStringResource = "Fit Photos to 4:5"',
-        'static let openAppWhenRun = false',
-        '@Parameter(title: "Photos", supportedContentTypes: [.image])',
-        'var photos: [IntentFile]',
-        'ReturnsValue<[IntentFile]>',
-        'TemporaryImageProcessor().process(photos)',
-        'return .result(value: outputs)',
-    ]:
-        assert required in intent, 'SHORTCUT_CONTRACT_CHANGED'
-    assert 'PhotoLibrarySaver' not in intent, 'SHORTCUT_MUST_NOT_SAVE'
-    assert 'removedOnCompletion = true' in '\n'.join(sources.values()), 'SHORTCUT_TEMPORARY_OUTPUT'
 
 
 def main():

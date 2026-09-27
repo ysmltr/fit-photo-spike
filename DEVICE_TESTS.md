@@ -1,47 +1,29 @@
-# Supplemental iPhone acceptance matrix
+# Supplemental iPhone resource checks
 
-**Every case is NOT RUN.** Start with [PHYSICAL_DEVICE_TEST.md](PHYSICAL_DEVICE_TEST.md) for installation, exact Shortcuts, temporary-file observations, and evidence recording. This matrix covers temporary outputs only; no PhotoKit editor, identity lookup, or in-place edit/revert test belongs to the MVP.
+**Status: NOT RUN for this changed build.** First complete [V1_DEVICE_TEST.md](V1_DEVICE_TEST.md). These checks supplement the functional cases with memory and file-lifetime observations.
 
-## Images and output
+## Repeated batches
 
-- [ ] Portrait, landscape, square, panorama, and tall screenshot: complete image visible, centered, proportional, white padding, exactly 4:5.
-- [ ] All eight EXIF orientations, including mirrored values: labeled edges/corners appear correctly without double rotation.
-- [ ] Transparent PNG: transparent regions and canvas are white in the opaque JPEG.
-- [ ] JPEG, HEIC, PNG, very small and already-4:5 inputs: each produces a valid JPEG with appropriate filename and `public.jpeg` type.
-- [ ] Large images: proportional downscale within 4096×5120; small images are not enlarged.
-- [ ] Previously edited/cropped representation: preserve supplied appearance, without claiming restoration of absent pixels.
-- [ ] Animated, corrupt, unsupported, falsely named input: clear error with no partial batch.
-- [ ] Live Photo input: record the still representation actually supplied; no motion output claim.
+- [ ] Run one image, then 20 large local images, across all four ratios. Record duration, output count/dimensions, and peak resident memory.
+- [ ] Repeat conversion → preview → Share → dismissal → New Batch several times. Inspect Xcode's memory graph and Instruments Allocations/Leaks for accumulating models, tasks, thumbnails, or share controllers.
+- [ ] Cancel during import and conversion. Wait for cancellation to settle; retry a clean batch. Check that no incomplete output is presented and no abandoned worker continues indefinitely.
+- [ ] Cancel a replacement selection and an import failure. The previous batch stays usable until replacement succeeds or New Batch is confirmed.
+- [ ] Change Ratio after a result. Old converted files are discarded; selected inputs remain for reconversion.
+- [ ] Confirm New Batch. Previous inputs/outputs are released once no worker or sharing presentation needs them. Cancelling the new picker leaves no previous result retained by model state.
 
-## Shortcuts and privacy
+## Temporary files and consumers
 
-- [ ] Select Photos with Select Multiple → Fit Photos to 4:5 → Share.
-- [ ] Photos share sheet accepting Images → Fit Photos to 4:5 → Share.
-- [ ] Files input works without a Photos asset or library permission.
-- [ ] App closed/open, first/repeated run, Share to Files and another installed app.
-- [ ] Fit requests no PhotoKit permission; record separate Shortcuts/destination prompts.
-- [ ] Originals unchanged; no automatic Photos additions or deletions.
-- [ ] No network needed once files are supplied; distinguish iCloud retrieval/destination uploads from Fit.
+- [ ] With authorized Xcode container inspection available, compare `tmp/FitPhotosAppSessions/` before and after a completed batch, cancelled work, confirmed New Batch, and process relaunch. Record cleanup as unverified if the container is unavailable.
+- [ ] Share retains all outputs through activity completion/dismissal. Cancelling sharing keeps displayed results available to share or save again.
+- [ ] Background/foreground during sharing and Save All does not remove files while a system consumer needs them.
+- [ ] A submitted Photos save transaction settles without files being removed underneath it. No overlapping transaction is started by repeated taps.
+- [ ] Kill/relaunch leaves the app usable and removes only abandoned owned batch folders. Saved Photos/Files copies and source images remain unchanged.
+- [ ] Unsupported input and storage failure discard partial outputs and report an actionable error. Repeated failed batches do not accumulate unexplained owned files.
 
-## Batch and temporary files
+## Record observations
 
-- [ ] Multiple outputs preserve input order and have distinct valid JPEG filenames.
-- [ ] Exactly 20 succeed; 21 and empty input are rejected appropriately.
-- [ ] Wait before Share and app relaunch do not invalidate successful outputs.
-- [ ] Successful files survive downstream reading; completion cleanup is observed rather than assumed.
-- [ ] Cancel during processing, stop after handoff, and cancel Share: record cleanup for each lifecycle.
-- [ ] Failure after an earlier render removes this invocation's partial output and returns no partial batch.
-- [ ] Overlapping workflows, if supported: no collisions or deletion of another workflow's files.
-- [ ] Repeated successful/failed runs: record accumulating scratch inputs or unexplained retained outputs as issues.
-- [ ] Low storage/unavailable input: actionable error and recovery on a valid retry.
+Use locally created fixtures, including a large camera still and a 20-item batch on a smaller-memory device. Session cleanup is attempted in `AppSessionFiles.deinit` after the last owner releases it; abandoned owned batch cleanup is attempted once per process launch. Deletion is best effort, so record actual outcomes and retained consumers instead of assuming every removal succeeds. Do not assert a mathematical guarantee of zero leaks: record observed allocations, deallocation, memory pressure, file lifetime, and remaining uncertainty. Review compiler/static-analysis concurrency and retain-cycle diagnostics where Xcode exposes them; record unresolved warnings.
 
-## Performance and UI
-
-- [ ] 48 MP supported still and 20-image batch: record peak resident memory, time, sizes, and termination with Xcode/Instruments.
-- [ ] Background/foreground and interrupted shortcut: no false success; record system execution limits.
-- [ ] Title, instruction, and Open Shortcuts readable with large Dynamic Type and VoiceOver.
-- [ ] Open Shortcuts works on each tested OS; report any opening failure.
-
-| Tester / date | Device / iOS build | Commit / CI run | Case | Pass / fail / unavailable | Evidence |
-|---|---|---|---|---|---|
-| PENDING | PENDING | PENDING | All | NOT RUN | None |
+| Date / tester | Build / iPhone / iOS | Case | Pass / fail / unavailable | Sanitized observation |
+| --- | --- | --- | --- | --- |
+| PENDING | PENDING | All | NOT RUN | None |

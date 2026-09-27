@@ -9,7 +9,6 @@ from verify_project import check_source_policy
 
 
 SAVER = 'Platform/PhotoLibrarySaver.swift'
-INTENT = 'AppIntents/FitPhotosIntent.swift'
 
 
 def synthetic_project():
@@ -26,17 +25,6 @@ func saveOnlyAfterUserTap() async {
 }
 ''',
         'Platform/OrderedPhotoPicker.swift': 'import PhotosUI\nlet picker = PHPickerConfiguration()',
-        INTENT: '''struct FitPhotosIntent: AppIntent {
-static let title: LocalizedStringResource = "Fit Photos to 4:5"
-static let openAppWhenRun = false
-@Parameter(title: "Photos", supportedContentTypes: [.image])
-var photos: [IntentFile]
-func perform() async throws -> some IntentResult & ReturnsValue<[IntentFile]> {
-let outputs = try await TemporaryImageProcessor().process(photos)
-return .result(value: outputs)
-}
-}''',
-        'ImageProcessing/TemporaryImageProcessor.swift': 'output.removedOnCompletion = true',
     }, {'NSPhotoLibraryAddUsageDescription': 'Add only when Save All is tapped.'}
 
 
@@ -122,31 +110,6 @@ class V1SourcePolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(AssertionError, 'PROHIBITED_SOURCE_API'):
                     check_source_policy(sources, info)
 
-    def test_shortcut_contract_and_legacy_processing_entry_point_are_preserved(self):
-        for previous, replacement in (
-            ('"Fit Photos to 4:5"', '"Synthetic renamed action"'),
-            ('var photos: [IntentFile]', 'var photos: IntentFile'),
-            ('ReturnsValue<[IntentFile]>', 'ReturnsValue<IntentFile>'),
-            ('openAppWhenRun = false', 'openAppWhenRun = true'),
-            ('TemporaryImageProcessor().process(photos)', 'FixedAppProcessor().process(photos)'),
-        ):
-            sources, info = synthetic_project()
-            sources[INTENT] = sources[INTENT].replace(previous, replacement)
-            with self.subTest(previous=previous):
-                with self.assertRaisesRegex(AssertionError, 'SHORTCUT_CONTRACT_CHANGED'):
-                    check_source_policy(sources, info)
-
-    def test_shortcut_cannot_call_the_app_saver(self):
-        sources, info = synthetic_project()
-        sources[INTENT] += '\nlet saver = PhotoLibrarySaver()'
-        with self.assertRaisesRegex(AssertionError, 'SHORTCUT_MUST_NOT_SAVE'):
-            check_source_policy(sources, info)
-
-    def test_shortcut_temporary_output_contract_remains_required(self):
-        sources, info = synthetic_project()
-        sources['ImageProcessing/TemporaryImageProcessor.swift'] = 'output.removedOnCompletion = false'
-        with self.assertRaisesRegex(AssertionError, 'SHORTCUT_TEMPORARY_OUTPUT'):
-            check_source_policy(sources, info)
 
 
 if __name__ == '__main__':

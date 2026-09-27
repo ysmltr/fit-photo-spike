@@ -22,9 +22,11 @@ final class PickerFileLoaderTests: XCTestCase {
         if let directory { try FileManager.default.removeItem(at: directory) }
     }
 
+    @MainActor
     func testCopiesBeforeProviderDeletesItsTemporaryFile() async throws {
         let operation = PickerFileCopyOperation(destination: destination, imageNumber: 1)
         let output = try await operation.load { completion in
+            XCTAssertTrue(Thread.isMainThread, "Provider registration must stay on MainActor")
             completion(self.source, nil)
             try? FileManager.default.removeItem(at: self.source)
             return Progress(totalUnitCount: 1)
@@ -34,9 +36,10 @@ final class PickerFileLoaderTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: source.path))
     }
 
+    @MainActor
     func testLateCallbackAfterCancellationDoesNotRecreateOutput() async throws {
         let callback = SyntheticPickerCallback()
-        let started = expectation(description: "provider started")
+        let started = XCTestExpectation(description: "provider started")
         let operation = PickerFileCopyOperation(destination: destination, imageNumber: 1)
         let task = Task {
             try await operation.load { completion in
@@ -45,7 +48,11 @@ final class PickerFileLoaderTests: XCTestCase {
                 return Progress(totalUnitCount: 1)
             }
         }
-        await fulfillment(of: [started], timeout: 2)
+        defer { task.cancel() }
+        // The static waiter keeps the timeout without sending this
+        // actor-isolated XCTestCase to a nonisolated async method.
+        let registration = await XCTWaiter.fulfillment(of: [started], timeout: 2)
+        XCTAssertEqual(registration, .completed)
         task.cancel()
         do {
             _ = try await task.value
@@ -56,6 +63,26 @@ final class PickerFileLoaderTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: source.path))
     }
 
+    @MainActor
+    func testRetainedProviderCallbackDoesNotRetainFinishedCopyOperation() async throws {
+        let callback = SyntheticPickerCallback()
+        var operation: PickerFileCopyOperation? = PickerFileCopyOperation(destination: destination, imageNumber: 1)
+        weak var weakOperation = operation
+        let output = try await operation?.load { completion in
+            callback.store(completion)
+            completion(self.source, nil)
+            return Progress(totalUnitCount: 1)
+        }
+        XCTAssertEqual(output, destination)
+        operation = nil
+        XCTAssertNil(weakOperation)
+        // A provider retaining or repeating its callback cannot keep completed
+        // bridge state alive or overwrite the app-owned result.
+        callback.invoke(source)
+        XCTAssertEqual(try Data(contentsOf: destination), Data([1, 2, 3, 4]))
+    }
+
+    @MainActor
     func testDuplicateCallbackDoesNotResumeTwiceOrOverwriteOutput() async throws {
         let operation = PickerFileCopyOperation(destination: destination, imageNumber: 1)
         let output = try await operation.load { completion in
@@ -66,6 +93,7 @@ final class PickerFileLoaderTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: output), Data([1, 2, 3, 4]))
     }
 
+    @MainActor
     func testCancellationBeforeStartDoesNotInvokeProvider() async throws {
         let operation = PickerFileCopyOperation(destination: destination, imageNumber: 1)
         let task = Task {
@@ -83,6 +111,7 @@ final class PickerFileLoaderTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: source.path))
     }
 
+    @MainActor
     func testCancellationBeforeProgressIsReturnedCancelsProviderProgress() async throws {
         let providerProgress = Progress(totalUnitCount: 1)
         let operation = PickerFileCopyOperation(destination: destination, imageNumber: 1)
@@ -102,6 +131,7 @@ final class PickerFileLoaderTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
     }
 
+    @MainActor
     func testCancellationAfterSynchronousCopyRemovesOnlyOwnedCopy() async throws {
         let operation = PickerFileCopyOperation(destination: destination, imageNumber: 1)
         let task = Task {
@@ -119,6 +149,7 @@ final class PickerFileLoaderTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: source), Data([1, 2, 3, 4]))
     }
 
+    @MainActor
     func testExistingDestinationIsNotRemovedOrOverwritten() async throws {
         try Data([9, 8, 7]).write(to: destination)
         let operation = PickerFileCopyOperation(destination: destination, imageNumber: 1)
@@ -135,6 +166,7 @@ final class PickerFileLoaderTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: source), Data([1, 2, 3, 4]))
     }
 
+    @MainActor
     func testProviderSourceEqualToDestinationIsNeverRemoved() async throws {
         let operation = PickerFileCopyOperation(destination: source, imageNumber: 1)
         do {
@@ -149,6 +181,7 @@ final class PickerFileLoaderTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: source), Data([1, 2, 3, 4]))
     }
 
+    @MainActor
     func testProviderFailureReturnsIndexedSafeErrorWithoutWritingFile() async throws {
         let operation = PickerFileCopyOperation(destination: destination, imageNumber: 3)
         do {

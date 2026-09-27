@@ -53,11 +53,7 @@ jobs:
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
           This job builds the native app and runs the entire shared scheme's test suite.
-          The artifact contains logs, toolchain/runtime details, and `.xcresult` when produced.
-          A successful job validates only Stage 1. Real iPhone checks are still required
-          for Shortcuts discovery, multi-file Share delivery, completion cleanup, and memory.
-          The production app returns temporary files and has no Photos library access.
-          AppIntentsTesting requires the Xcode 27 / iOS 27 beta toolchain and is unsupported
-          by this pinned stable Xcode 26.6 job; ordinary intent XCTest coverage still runs.
-          Stage 2 remains pending in PHYSICAL_DEVICE_TEST.md.
+          Simulator validation does not establish real-device permission, saving,
+          sharing, interruption, file lifetime, or memory behavior.
+          Physical iPhone checks remain pending in PHYSICAL_DEVICE_TEST.md.
           SUMMARY

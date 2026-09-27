@@ -5,6 +5,16 @@
 	};
 	objectVersion = 56;
 	objects = {
+		FEF39F05365BDEAD8C9EEB4D = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "ImageTestFixture.swift";
+			sourceTree = "<group>";
+		};
+		F977A31DC4B14B366B0CEB63 = {
+			isa = "PBXBuildFile";
+			fileRef = "FEF39F05365BDEAD8C9EEB4D";
+		};
 		B10000000000000000000001 = {
 			isa = "PBXFileReference";
 			lastKnownFileType = "folder.assetcatalog";
@@ -14,14 +24,6 @@
 		B10000000000000000000002 = {
 			isa = "PBXBuildFile";
 			fileRef = "B10000000000000000000001";
-		};
-		AA0000000000000000000007 = {
-			isa = "PBXGroup";
-			children = (
-				"AF25D388DFA159ABBA835952",
-			);
-			path = "AppIntents";
-			sourceTree = "<group>";
 		};
 		D7D9B3F0450C52A0D4C64907 = {
 			isa = "PBXFileReference";
@@ -84,7 +86,6 @@
 			children = (
 				"CDB480DB475552E206A18948",
 				"9F27E9452A8EDB34632E0A28",
-				"D136159631848BC0B2A65229",
 				"C979A7B4105E7D014414994F",
 				"719B60BE826F1BB0632BF085",
 			);
@@ -119,22 +120,11 @@
 				"122FDCC92684B9C82011C8D2",
 				"61DC165F202C885F4D4B01B6",
 				"577159CFD869163D7A997466",
-				"AA0000000000000000000007",
 				"50E339DFD41A86BCFB1CF12E",
 				"AD55B577F63DA4DB61DA96FD",
 			);
 			path = "FitPhotoSpike";
 			sourceTree = "<group>";
-		};
-		A47CEE7ECE13E8D93B097303 = {
-			isa = "PBXFileReference";
-			lastKnownFileType = "sourcecode.swift";
-			path = "CanvasGeometryTests.swift";
-			sourceTree = "<group>";
-		};
-		DF82CEF937AD7D1A450C3CB8 = {
-			isa = "PBXBuildFile";
-			fileRef = "A47CEE7ECE13E8D93B097303";
 		};
 		BF3686D054740BD1BB8408AF = {
 			isa = "PBXFileReference";
@@ -149,10 +139,8 @@
 		E05C5E314CF0B96E241F0E07 = {
 			isa = "PBXGroup";
 			children = (
-				"A47CEE7ECE13E8D93B097303",
+				"FEF39F05365BDEAD8C9EEB4D",
 				"BF3686D054740BD1BB8408AF",
-				"DF01D48B37A20E86CCC54E8A",
-				"DDFAD1C06076607BF2B79A4C",
 				"B6DBA390B076FAC14356EF29",
 				"77D0D29551F02B7181646071",
 				"AFBF298278F3E5C870582006",
@@ -203,8 +191,6 @@
 				"829C11D8A2A4BB5B369D5327",
 				"2A0407726B5B9B8BB0845338",
 				"3ECE8A4AFEE649306556B079",
-				"CE071B5AA64C27EF147122AA",
-				"8F382B38B192D7C9795A2C82",
 				"ECF7CEEF566B6C2757BAA842",
 				"1E6EF692F3869E15F52E9DC2",
 				"A06C7388E0389B364B2834EE",
@@ -239,10 +225,8 @@
 			isa = "PBXSourcesBuildPhase";
 			buildActionMask = 2147483647;
 			files = (
-				"DF82CEF937AD7D1A450C3CB8",
+				"F977A31DC4B14B366B0CEB63",
 				"331C5946716BD45C2F5E8D8F",
-				"7C8E648B3B7407F2941B5502",
-				"6D88AB9623E341E3EC2559D8",
 				"5780F29B9B25AC95B1BAAD8A",
 				"D51A9C69B5D8CA12173CAB55",
 				"D2CDDF2436564087050C3094",
@@ -530,46 +514,6 @@
 				"C3B7FB3CEB299F9E2071511B",
 				"C51C43F50AEFAA90A2251CAB",
 			);
-		};
-		D136159631848BC0B2A65229 = {
-			isa = "PBXFileReference";
-			lastKnownFileType = "sourcecode.swift";
-			path = "TemporaryImageProcessor.swift";
-			sourceTree = "<group>";
-		};
-		CE071B5AA64C27EF147122AA = {
-			isa = "PBXBuildFile";
-			fileRef = "D136159631848BC0B2A65229";
-		};
-		AF25D388DFA159ABBA835952 = {
-			isa = "PBXFileReference";
-			lastKnownFileType = "sourcecode.swift";
-			path = "FitPhotosIntent.swift";
-			sourceTree = "<group>";
-		};
-		8F382B38B192D7C9795A2C82 = {
-			isa = "PBXBuildFile";
-			fileRef = "AF25D388DFA159ABBA835952";
-		};
-		DF01D48B37A20E86CCC54E8A = {
-			isa = "PBXFileReference";
-			lastKnownFileType = "sourcecode.swift";
-			path = "TemporaryImageProcessorTests.swift";
-			sourceTree = "<group>";
-		};
-		7C8E648B3B7407F2941B5502 = {
-			isa = "PBXBuildFile";
-			fileRef = "DF01D48B37A20E86CCC54E8A";
-		};
-		DDFAD1C06076607BF2B79A4C = {
-			isa = "PBXFileReference";
-			lastKnownFileType = "sourcecode.swift";
-			path = "FitPhotosIntentTests.swift";
-			sourceTree = "<group>";
-		};
-		6D88AB9623E341E3EC2559D8 = {
-			isa = "PBXBuildFile";
-			fileRef = "DDFAD1C06076607BF2B79A4C";
 		};
 		50E339DFD41A86BCFB1CF12E = {
 			isa = "PBXGroup";

@@ -26,6 +26,7 @@ final class FitPhotosModel: ObservableObject {
     private var files: AppSessionFiles?
     private var operation: Task<Void, Never>?
     private var operationID = UUID()
+    var session: AppSessionFiles? { files }
     var isBusy: Bool { work != .idle }
     var canCancel: Bool { work == .importing || work == .converting }
 
@@ -33,7 +34,6 @@ final class FitPhotosModel: ObservableObject {
 
     deinit {
         operation?.cancel()
-        files?.removeAll()
     }
 
     func receiveSelection(_ selection: [PHPickerResult]) {
@@ -51,26 +51,25 @@ final class FitPhotosModel: ObservableObject {
         }
         begin(.importing, count: selection.count)
         let requestID = operationID
-        operation = Task {
+        operation = Task { [weak self] in
             do {
                 let urls = try await PickerFileLoader().load(selection, into: pending.inputDirectory) { [weak self] done, count in
-                    Task { @MainActor in self?.updateProgress(done, count, for: .importing, id: requestID) }
+                    self?.updateProgress(done, count, for: .importing, id: requestID)
                 }
                 try Task.checkCancellation()
-                files?.removeAll()
-                files = pending
-                inputs = urls
-                outputs = []
-                savedToPhotos = false
+                self?.files = pending
+                self?.inputs = urls
+                self?.outputs = []
+                self?.savedToPhotos = false
             } catch is CancellationError {
                 pending.removeAll()
             } catch {
                 pending.removeAll()
-                message = FitPhotosMessage(title: "Unable to load selection", text:
+                self?.message = FitPhotosMessage(title: "Unable to load selection", text:
                     (error as? PhotoSelectionError)?.errorDescription
                     ?? "The selected photos could not be loaded. Try locally available JPEG, HEIC, or PNG still images.")
             }
-            finish()
+            self?.finish()
         }
     }
 
@@ -84,43 +83,48 @@ final class FitPhotosModel: ObservableObject {
         let selectedRatio = ratio
         begin(.converting, count: selectedInputs.count)
         let requestID = operationID
-        operation = Task {
+        operation = Task { [weak self] in
+            // The worker must settle before its session can be deleted.
+            defer { withExtendedLifetime(files) {} }
             do {
                 let urls = try await AppBatchProcessor().process(
                     selectedInputs, ratio: selectedRatio, outputDirectory: files.outputDirectory
-                ) { [weak self] done, count in
-                    Task { @MainActor in self?.updateProgress(done, count, for: .converting, id: requestID) }
+                ) { @MainActor [weak self] done, count in
+                    self?.updateProgress(done, count, for: .converting, id: requestID)
                 }
                 try Task.checkCancellation()
-                outputs = urls
-                savedToPhotos = false
+                self?.outputs = urls
+                self?.savedToPhotos = false
             } catch is CancellationError {
                 files.removeOutputs()
             } catch {
                 files.removeOutputs()
-                message = FitPhotosMessage(title: "Unable to convert batch", text:
+                self?.message = FitPhotosMessage(title: "Unable to convert batch", text:
                     (error as? AppBatchProcessingError)?.errorDescription
                     ?? "The batch could not be converted. No photos were saved. Check the selected files and available storage.")
             }
-            finish()
+            self?.finish()
         }
     }
 
     func saveAll() {
-        guard !isBusy, !outputs.isEmpty, !savedToPhotos else { return }
+        guard !isBusy, !outputs.isEmpty, !savedToPhotos, let files else { return }
         let urls = outputs
         begin(.saving, count: urls.count)
-        operation = Task {
+        operation = Task { [weak self] in
+            // A submitted PhotoKit transaction cannot be cancelled. Keep its
+            // files alive until the transaction settles, even if the view exits.
+            defer { withExtendedLifetime(files) {} }
             do {
                 try await PhotoLibrarySaver().save(urls)
-                savedToPhotos = true
+                self?.savedToPhotos = true
             } catch {
                 let saveError = error as? PhotoLibrarySaveError
-                message = FitPhotosMessage(title: "Unable to save photos",
+                self?.message = FitPhotosMessage(title: "Unable to save photos",
                     text: saveError?.errorDescription ?? "The photos could not be saved. Your converted files are still available to share or retry.",
                     offersSettings: saveError == .permissionDenied)
             }
-            finish()
+            self?.finish()
         }
     }
 
@@ -141,7 +145,6 @@ final class FitPhotosModel: ObservableObject {
         guard !isBusy else { return }
         inputs = []
         outputs = []
-        files?.removeAll()
         files = nil
         savedToPhotos = false
         message = nil
