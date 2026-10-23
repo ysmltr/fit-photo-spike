@@ -6,7 +6,8 @@ have **not** been performed by this implementation session.
 
 The separate workflow is `.github/workflows/testflight-upload.yml`, displayed as
 **Signed TestFlight upload** in GitHub Actions. It runs only with
-`workflow_dispatch` on the repository's default branch. The existing Simulator
+`workflow_dispatch` on the repository's default branch or on `redesign-v2`
+(version 2.0 test builds). The existing Simulator
 workflow and unsigned device-build workflow are unchanged.
 
 ## Files and project settings
@@ -75,7 +76,7 @@ valid dates. Development, Ad Hoc, enterprise and wildcard App ID profiles fail.
 1. Merge these files into the repository's default branch. Preserve any existing
    account-specific project settings when reviewing source changes.
 2. In **Settings → Environments**, create or configure `testflight`. Restrict its
-   deployment branches to the default branch. Required reviewers are optional.
+   deployment branches to the default branch and `redesign-v2`. Required reviewers are optional.
    The existing repository secrets work; no additional secret name is required.
 3. Leave Actions debug logging disabled. The preparation step refuses
    `RUNNER_DEBUG=1` before the step that receives signing secrets.
