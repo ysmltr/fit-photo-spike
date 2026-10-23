@@ -44,26 +44,42 @@ struct AppBatchProcessor: Sendable {
     /// The app's single photo limit, used by the picker, import, conversion
     /// and saving. It matches Instagram's 20-item carousel maximum.
     static let maximumImageCount = 20
-    private let render: @Sendable (URL, URL, OutputRatio) throws -> Void
+    private let render: @Sendable (URL, URL, OutputRatio, PhotoEdit) throws -> Void
 
-    init(render: @escaping @Sendable (URL, URL, OutputRatio) throws -> Void = { input, output, ratio in
-        _ = try ImageRenderer().render(inputURL: input, outputURL: output, ratio: ratio)
+    init(editRenderer: @escaping @Sendable (URL, URL, OutputRatio, PhotoEdit) throws -> Void = { input, output, ratio, edit in
+        _ = try ImageRenderer().render(inputURL: input, outputURL: output, ratio: ratio, edit: edit)
     }) {
-        self.render = render
+        self.render = editRenderer
     }
 
+    /// A renderer that ignores per-photo edits.
+    init(render: @escaping @Sendable (URL, URL, OutputRatio) throws -> Void) {
+        self.render = { input, output, ratio, _ in try render(input, output, ratio) }
+    }
+
+    /// Every photo with the standard edit: whole, centered, on white.
     func process(_ inputs: [URL], ratio: OutputRatio, outputDirectory: URL,
+                 progress: @escaping @Sendable (Int, Int) async -> Void = { _, _ in }) async throws -> [URL] {
+        try await process(inputs, edits: Array(repeating: .standard, count: inputs.count), ratio: ratio,
+                          outputDirectory: outputDirectory, progress: progress)
+    }
+
+    /// `edits[i]` describes `inputs[i]`.
+    func process(_ inputs: [URL], edits: [PhotoEdit], ratio: OutputRatio, outputDirectory: URL,
                  progress: @escaping @Sendable (Int, Int) async -> Void = { _, _ in }) async throws -> [URL] {
         guard (1...Self.maximumImageCount).contains(inputs.count) else {
             throw AppBatchProcessingError.invalidImageCount(inputs.count)
+        }
+        guard edits.count == inputs.count else {
+            throw AppBatchProcessingError.invalidImageCount(edits.count)
         }
         try Task.checkCancellation()
         return try await withThrowingTaskGroup(of: [URL].self) { group in
             // Task-group children do not inherit MainActor isolation. The
             // group joins its only child and propagates caller cancellation.
             group.addTask(priority: .userInitiated) {
-                try await self.processSequentially(inputs, ratio: ratio, outputDirectory: outputDirectory,
-                                                   progress: progress)
+                try await self.processSequentially(inputs, edits: edits, ratio: ratio,
+                                                   outputDirectory: outputDirectory, progress: progress)
             }
             for try await outputs in group {
                 if Task.isCancelled {
@@ -76,7 +92,7 @@ struct AppBatchProcessor: Sendable {
         }
     }
 
-    private func processSequentially(_ inputs: [URL], ratio: OutputRatio, outputDirectory: URL,
+    private func processSequentially(_ inputs: [URL], edits: [PhotoEdit], ratio: OutputRatio, outputDirectory: URL,
                                      progress: @Sendable (Int, Int) async -> Void) async throws -> [URL] {
         try Task.checkCancellation()
         guard outputDirectory.isFileURL else { throw AppBatchProcessingError.outputUnavailable }
@@ -111,7 +127,7 @@ struct AppBatchProcessor: Sendable {
                 try autoreleasepool {
                     let scopedAccess = input.startAccessingSecurityScopedResource()
                     defer { if scopedAccess { input.stopAccessingSecurityScopedResource() } }
-                    try render(input, output, ratio)
+                    try render(input, output, ratio, edits[index])
                 }
             } catch {
                 if error is CancellationError || Task.isCancelled { throw CancellationError() }

@@ -22,10 +22,11 @@ enum PhotoSelectionError: LocalizedError, Equatable, Sendable {
     }
 }
 
-/// Selected photos that were copied and checked, in picker order, plus the
-/// 1-based picker positions that were left out.
+/// Selected photos that were copied and checked, in picker order, with each
+/// one's upright pixel size, plus the 1-based picker positions left out.
 struct PickerLoadResult: Sendable {
     let urls: [URL]
+    let sizes: [CGSize]
     let skipped: [Int]
 }
 
@@ -49,6 +50,7 @@ struct PickerFileLoader {
         }
 
         var ownedURLs: [URL] = []
+        var sizes: [CGSize] = []
         var skipped: [Int] = []
         var succeeded = false
         defer {
@@ -89,10 +91,12 @@ struct PickerFileLoader {
             ownedURLs.append(destination)
             try Task.checkCancellation()
             // The bounded test decode runs off the main actor.
-            let usable = await Task.detached(priority: .userInitiated) {
-                ImageRenderer().canRender(inputURL: destination)
+            let size = await Task.detached(priority: .userInitiated) {
+                ImageRenderer().renderableSize(inputURL: destination)
             }.value
-            if !usable {
+            if let size {
+                sizes.append(size)
+            } else {
                 ownedURLs.removeLast()
                 try? FileManager.default.removeItem(at: destination)
                 skipped.append(index + 1)
@@ -103,7 +107,7 @@ struct PickerFileLoader {
         try Task.checkCancellation()
         guard !ownedURLs.isEmpty else { throw PhotoSelectionError.noUsableImages }
         succeeded = true
-        return PickerLoadResult(urls: ownedURLs, skipped: skipped)
+        return PickerLoadResult(urls: ownedURLs, sizes: sizes, skipped: skipped)
     }
 }
 

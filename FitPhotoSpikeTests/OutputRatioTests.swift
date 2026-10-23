@@ -3,19 +3,30 @@ import XCTest
 @testable import FitPhotoSpike
 
 final class OutputRatioTests: XCTestCase {
-    func testAllFourChoicesHaveTheSpecifiedDimensionsAndDistinctIdentities() {
+    func testAllChoicesHaveTheSpecifiedDimensionsAndDistinctIdentities() {
         let expected: [(OutputRatio, String, Int, Int)] = [
-            (.fourFive, "4:5", 1080, 1350), (.threeFour, "3:4", 1080, 1440),
-            (.nineSixteen, "9:16", 1080, 1920), (.square, "1:1", 1080, 1080)
+            (.fourFive, "4:5", 1080, 1350), (.square, "1:1", 1080, 1080),
+            (.landscape, "1.91:1", 1080, 566), (.nineSixteen, "9:16", 1080, 1920),
+            (.threeFour, "3:4", 1080, 1440), (.twoThree, "2:3", 1080, 1620),
+            (.sixteenNine, "16:9", 1920, 1080)
         ]
         XCTAssertEqual(OutputRatio.allCases, expected.map { $0.0 })
-        XCTAssertEqual(Set(OutputRatio.allCases.map(\.id)).count, 4)
+        XCTAssertEqual(Set(OutputRatio.allCases.map(\.id)).count, expected.count)
         for (ratio, title, width, height) in expected {
             XCTAssertEqual(ratio.title, title)
             XCTAssertEqual(ratio.width, width)
             XCTAssertEqual(ratio.height, height)
+            XCTAssertEqual(ratio.canvasSize, CGSize(width: width, height: height))
             XCTAssertFalse(ratio.label.isEmpty)
         }
+        XCTAssertEqual(OutputRatio.allCases.filter(\.isInstagram), [.fourFive, .square, .landscape, .nineSixteen])
+    }
+
+    func testStoredRawValuesFromEarlierVersionsStillResolve() {
+        XCTAssertEqual(OutputRatio(rawValue: "fourFive"), .fourFive)
+        XCTAssertEqual(OutputRatio(rawValue: "threeFour"), .threeFour)
+        XCTAssertEqual(OutputRatio(rawValue: "nineSixteen"), .nineSixteen)
+        XCTAssertEqual(OutputRatio(rawValue: "square"), .square)
     }
 
     func testAllSourceShapesAreCenteredAndFullyContainedWithoutStretching() throws {

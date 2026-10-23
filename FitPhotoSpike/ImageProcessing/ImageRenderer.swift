@@ -15,7 +15,14 @@ struct RenderResult: Sendable {
 /// Synchronous, stateless worker. Call from a background task, one image at a
 /// time. Never pass the original input URL as the rendered output URL.
 struct ImageRenderer: Sendable {
-    func render(inputURL: URL, outputURL: URL, ratio: OutputRatio) throws -> RenderResult {
+    /// Upper bound for one decode of a zoomed-in photo; Core Image enlarges
+    /// beyond it. Fit never needs more than the canvas size.
+    static let maximumDecodeLongEdge = 4096
+
+    /// Places the photo as `edit` describes. The standard edit is the whole
+    /// photo, centered, on white.
+    func render(inputURL: URL, outputURL: URL, ratio: OutputRatio,
+                edit: PhotoEdit = .standard) throws -> RenderResult {
         try autoreleasepool {
             try Task.checkCancellation()
             guard inputURL.resolvingSymlinksInPath().standardizedFileURL
@@ -24,8 +31,14 @@ struct ImageRenderer: Sendable {
             }
             let input = try readInput(url: inputURL)
             let geometry = try CanvasGeometry(sourceWidth: input.width, sourceHeight: input.height, ratio: ratio)
-            let decodeLongEdge = max(1, Int(ceil(max(geometry.imageRect.width,
-                                                     geometry.imageRect.height))))
+            let placed = PlacementGeometry.imageRect(
+                source: CGSize(width: input.width, height: input.height),
+                canvas: CGSize(width: geometry.width, height: geometry.height), edit: edit)
+            guard placed.width.isFinite, placed.height.isFinite, placed.width > 0, placed.height > 0 else {
+                throw ImageRenderingError.invalidDimensions
+            }
+            let decodeLongEdge = min(Self.maximumDecodeLongEdge,
+                                     max(1, Int(ceil(max(placed.width, placed.height)))))
             // Always make the thumbnail from the actual image rather than a
             // potentially small embedded preview. Decode only the useful size.
             // Apply the file's EXIF orientation exactly once below.
@@ -48,16 +61,17 @@ struct ImageRenderer: Sendable {
             ))
             // ImageIO can round the thumbnail by a pixel. Use one uniform
             // scale for its actual extent, fitting within the planned size.
-            let fitScale = min(geometry.imageRect.width / upright.extent.width,
-                               geometry.imageRect.height / upright.extent.height)
-            let scaled = upright.transformed(by: CGAffineTransform(scaleX: fitScale, y: fitScale))
-            let centered = scaled.transformed(by: CGAffineTransform(
-                translationX: (CGFloat(geometry.width) - scaled.extent.width) / 2,
-                y: (CGFloat(geometry.height) - scaled.extent.height) / 2
+            let photoScale = min(placed.width / upright.extent.width,
+                                 placed.height / upright.extent.height)
+            let scaled = upright.transformed(by: CGAffineTransform(scaleX: photoScale, y: photoScale))
+            // Core Image's origin is bottom-left; the placement's is top-left.
+            let positioned = scaled.transformed(by: CGAffineTransform(
+                translationX: placed.midX - scaled.extent.width / 2,
+                y: CGFloat(geometry.height) - placed.midY - scaled.extent.height / 2
             ))
-            let white = CIImage(color: CIColor(red: 1, green: 1, blue: 1, alpha: 1))
+            let canvas = positioned
+                .composited(over: background(edit.background, photo: upright, canvas: geometry.canvasRect))
                 .cropped(to: geometry.canvasRect)
-            let canvas = centered.composited(over: white).cropped(to: geometry.canvasRect)
             guard let sRGB = CGColorSpace(name: CGColorSpace.sRGB) else {
                 throw ImageRenderingError.renderFailed
             }
@@ -101,17 +115,47 @@ struct ImageRenderer: Sendable {
         }
     }
 
-    /// Import-time check using the same format rules as `render`, plus a tiny
-    /// decode, so an unusable photo is skipped before any conversion starts.
-    func canRender(inputURL: URL) -> Bool {
-        autoreleasepool {
-            guard let input = try? readInput(url: inputURL) else { return false }
-            return CGImageSourceCreateThumbnailAtIndex(input.source, 0, [
-                kCGImageSourceCreateThumbnailFromImageAlways: true,
-                kCGImageSourceThumbnailMaxPixelSize: 64
-            ] as CFDictionary) != nil
+    /// An opaque background; transparent photo regions show through to it.
+    private func background(_ background: CanvasBackground, photo: CIImage, canvas: CGRect) -> CIImage {
+        let white = CIImage(color: CIColor(red: 1, green: 1, blue: 1, alpha: 1)).cropped(to: canvas)
+        switch background {
+        case .color(let color):
+            return CIImage(color: CIColor(red: CGFloat(color.red), green: CGFloat(color.green),
+                                          blue: CGFloat(color.blue), alpha: 1)).cropped(to: canvas)
+        case .blur:
+            // Cover the canvas with the photo, then blur. Clamping before
+            // scaling keeps the enlarged edges opaque.
+            let cover = max(canvas.width / photo.extent.width, canvas.height / photo.extent.height)
+            let coverRect = CGRect(x: 0, y: 0, width: photo.extent.width * cover,
+                                   height: photo.extent.height * cover)
+            let scaled = photo.clampedToExtent()
+                .transformed(by: CGAffineTransform(scaleX: cover, y: cover))
+                .cropped(to: coverRect)
+            let centered = scaled.transformed(by: CGAffineTransform(
+                translationX: canvas.midX - coverRect.midX, y: canvas.midY - coverRect.midY))
+            let sigma = Double(min(canvas.width, canvas.height) * CanvasBackground.blurFraction)
+            return centered.clampedToExtent()
+                .applyingGaussianBlur(sigma: sigma)
+                .cropped(to: canvas)
+                .composited(over: white)
         }
     }
+
+    /// The photo's upright pixel size if it passes the same format checks as
+    /// `render` and a tiny decode. Used at import, so an unusable photo is
+    /// skipped before any conversion starts.
+    func renderableSize(inputURL: URL) -> CGSize? {
+        autoreleasepool {
+            guard let input = try? readInput(url: inputURL),
+                  CGImageSourceCreateThumbnailAtIndex(input.source, 0, [
+                      kCGImageSourceCreateThumbnailFromImageAlways: true,
+                      kCGImageSourceThumbnailMaxPixelSize: 64
+                  ] as CFDictionary) != nil else { return nil }
+            return CGSize(width: input.width, height: input.height)
+        }
+    }
+
+    func canRender(inputURL: URL) -> Bool { renderableSize(inputURL: inputURL) != nil }
 
     /// Still formats that iOS decodes. GIF stays unsupported because it is
     /// usually animated. The ImageIO-reported type decides, not the filename.
