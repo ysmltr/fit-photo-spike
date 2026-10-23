@@ -71,6 +71,18 @@ final class ImageRendererTests: XCTestCase {
         XCTAssertThrowsError(try renderer.render(inputURL: input, outputURL: input, ratio: .fourFive))
     }
 
+    func testImportCheckAcceptsStillFormatsAndRejectsGIFAndBrokenFiles() throws {
+        XCTAssertTrue(renderer.canRender(inputURL: try writeFixture(quadrants(), type: .png)))
+        let tiff = try writeFixture(quadrants(), type: .tiff)
+        XCTAssertTrue(renderer.canRender(inputURL: tiff))
+        let result = try renderer.render(inputURL: tiff, outputURL: outputURL(), ratio: .square)
+        XCTAssertEqual(result.width, result.height)
+        XCTAssertFalse(renderer.canRender(inputURL: try writeFixture(quadrants(), type: .gif)))
+        let broken = outputURL()
+        try Data("synthetic invalid image".utf8).write(to: broken)
+        XCTAssertFalse(renderer.canRender(inputURL: broken))
+    }
+
     func testAnimatedPNGIsRejected() throws {
         let input = outputURL().appendingPathExtension("png")
         let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(

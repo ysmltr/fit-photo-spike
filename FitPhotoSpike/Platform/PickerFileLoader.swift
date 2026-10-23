@@ -6,26 +6,40 @@ enum PhotoSelectionError: LocalizedError, Equatable, Sendable {
     case invalidCount
     case preparationFailed
     case unavailableImage(Int)
+    case noUsableImages
 
     var errorDescription: String? {
         switch self {
         case .invalidCount:
-            return "Select between 1 and 20 photos."
+            return "Select between 1 and \(AppBatchProcessor.maximumImageCount) photos."
         case .preparationFailed:
             return "These photos couldn't be prepared. Check available storage and try again."
         case .unavailableImage(let number):
             return "Photo \(number) couldn't be opened. If it is stored in iCloud, download it in Photos and try again."
+        case .noUsableImages:
+            return "None of these photos could be opened. Photos stored in iCloud need an internet connection, and animated images aren't supported."
         }
     }
 }
 
+/// Selected photos that were copied and checked, in picker order, plus the
+/// 1-based picker positions that were left out.
+struct PickerLoadResult: Sendable {
+    let urls: [URL]
+    let skipped: [Int]
+}
+
 /// Loads one provider at a time, retaining file URLs instead of a batch of
 /// decoded images. This never fetches PHAssets or attempts to identify them.
+/// One unavailable or unsupported photo is skipped rather than discarding the
+/// rest of the selection; only cancellation or zero usable photos fail.
 @MainActor
 struct PickerFileLoader {
     func load(_ results: [PHPickerResult], into directory: URL,
-              progress: @escaping @MainActor (Int, Int) -> Void) async throws -> [URL] {
-        guard (1...20).contains(results.count) else { throw PhotoSelectionError.invalidCount }
+              progress: @escaping @MainActor (Int, Int) -> Void) async throws -> PickerLoadResult {
+        guard (1...AppBatchProcessor.maximumImageCount).contains(results.count) else {
+            throw PhotoSelectionError.invalidCount
+        }
         try Task.checkCancellation()
         guard directory.isFileURL else { throw PhotoSelectionError.preparationFailed }
         do {
@@ -35,6 +49,7 @@ struct PickerFileLoader {
         }
 
         var ownedURLs: [URL] = []
+        var skipped: [Int] = []
         var succeeded = false
         defer {
             if !succeeded {
@@ -46,25 +61,49 @@ struct PickerFileLoader {
             try Task.checkCancellation()
             let provider = result.itemProvider
             guard provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) else {
-                throw PhotoSelectionError.unavailableImage(index + 1)
+                skipped.append(index + 1)
+                progress(index + 1, results.count)
+                continue
             }
             // ImageIO detects the actual format from bytes; do not trust or
             // reuse filenames supplied by an external provider.
             let destination = directory.appendingPathComponent("selected-\(UUID().uuidString).image")
             let operation = PickerFileCopyOperation(destination: destination, imageNumber: index + 1)
-            _ = try await operation.load { completion in
-                provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier,
-                                                completionHandler: completion)
+            do {
+                _ = try await operation.load { completion in
+                    provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier,
+                                                    completionHandler: completion)
+                }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                // For example, an iCloud download that failed. The operation
+                // has already removed any partial copy of its own.
+                try Task.checkCancellation()
+                skipped.append(index + 1)
+                progress(index + 1, results.count)
+                continue
             }
             // Ownership begins only after our copy succeeds. A collision must
             // never make cleanup delete a pre-existing file.
             ownedURLs.append(destination)
             try Task.checkCancellation()
+            // The bounded test decode runs off the main actor.
+            let usable = await Task.detached(priority: .userInitiated) {
+                ImageRenderer().canRender(inputURL: destination)
+            }.value
+            if !usable {
+                ownedURLs.removeLast()
+                try? FileManager.default.removeItem(at: destination)
+                skipped.append(index + 1)
+            }
+            try Task.checkCancellation()
             progress(index + 1, results.count)
         }
         try Task.checkCancellation()
+        guard !ownedURLs.isEmpty else { throw PhotoSelectionError.noUsableImages }
         succeeded = true
-        return ownedURLs
+        return PickerLoadResult(urls: ownedURLs, skipped: skipped)
     }
 }
 

@@ -39,8 +39,9 @@ final class FitPhotosModel: ObservableObject {
     func receiveSelection(_ selection: [PHPickerResult]) {
         // Cancelling the picker keeps the previous selection.
         guard !selection.isEmpty, !isBusy else { return }
-        guard selection.count <= 20 else {
-            message = FitPhotosMessage(title: "Too many photos", text: "Choose between 1 and 20 still images.")
+        guard selection.count <= AppBatchProcessor.maximumImageCount else {
+            message = FitPhotosMessage(title: "Too many photos",
+                text: "Choose between 1 and \(AppBatchProcessor.maximumImageCount) still images.")
             return
         }
         let pending: AppSessionFiles
@@ -53,14 +54,17 @@ final class FitPhotosModel: ObservableObject {
         let requestID = operationID
         operation = Task { [weak self] in
             do {
-                let urls = try await PickerFileLoader().load(selection, into: pending.inputDirectory) { [weak self] done, count in
+                let loaded = try await PickerFileLoader().load(selection, into: pending.inputDirectory) { [weak self] done, count in
                     self?.updateProgress(done, count, for: .importing, id: requestID)
                 }
                 try Task.checkCancellation()
                 self?.files = pending
-                self?.inputs = urls
+                self?.inputs = loaded.urls
                 self?.outputs = []
                 self?.savedToPhotos = false
+                if !loaded.skipped.isEmpty {
+                    self?.message = FitPhotosModel.skippedMessage(loaded.skipped, kept: loaded.urls.count)
+                }
             } catch is CancellationError {
                 pending.removeAll()
             } catch {
@@ -75,8 +79,9 @@ final class FitPhotosModel: ObservableObject {
 
     func convert() {
         guard !isBusy, outputs.isEmpty, let files else { return }
-        guard (1...20).contains(inputs.count) else {
-            message = FitPhotosMessage(title: "Select photos first", text: "Choose between 1 and 20 still images.")
+        guard (1...AppBatchProcessor.maximumImageCount).contains(inputs.count) else {
+            message = FitPhotosMessage(title: "Select photos first",
+                text: "Choose between 1 and \(AppBatchProcessor.maximumImageCount) still images.")
             return
         }
         let selectedInputs = inputs
@@ -148,6 +153,16 @@ final class FitPhotosModel: ObservableObject {
         files = nil
         savedToPhotos = false
         message = nil
+    }
+
+    /// Positions follow the picker order the user saw, e.g. "Photos 3 and 7".
+    private static func skippedMessage(_ skipped: [Int], kept: Int) -> FitPhotosMessage {
+        let positions = ListFormatter.localizedString(byJoining: skipped.map(String.init))
+        let title = skipped.count == 1 ? "1 photo was skipped" : "\(skipped.count) photos were skipped"
+        let which = skipped.count == 1 ? "Photo \(positions) couldn't be opened." : "Photos \(positions) couldn't be opened."
+        let ready = kept == 1 ? "The other photo is ready." : "The other \(kept) are ready."
+        return FitPhotosMessage(title: title, text: which + " " + ready
+            + " Photos stored in iCloud need an internet connection, and animated images aren't supported.")
     }
 
     private func begin(_ work: Work, count: Int) {

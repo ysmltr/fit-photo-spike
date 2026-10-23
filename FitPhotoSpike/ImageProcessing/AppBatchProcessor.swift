@@ -8,7 +8,7 @@ enum AppImageFailureReason: Equatable, Sendable {
 
     var message: String {
         switch self {
-        case .unsupported: return "Choose JPEG, HEIC, or PNG still images. Animated images are not supported."
+        case .unsupported: return "Use still photos such as JPEG, HEIC, or PNG. Animated images are not supported."
         case .unreadable: return "The image could not be read. Select it again and retry."
         case .storage: return "The result could not be written. Check available storage and retry."
         case .conversion: return "The image could not be converted. Select another still image and retry."
@@ -25,7 +25,7 @@ enum AppBatchProcessingError: LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .invalidImageCount(let count):
-            return "Choose between 1 and 20 photos. This selection contains \(count)."
+            return "Choose between 1 and \(AppBatchProcessor.maximumImageCount) photos. This selection contains \(count)."
         case .outputUnavailable:
             return "Temporary storage is unavailable. Check available storage and try again."
         case .nonLocalInput(let index, let total):
@@ -41,6 +41,8 @@ enum AppBatchProcessingError: LocalizedError, Equatable, Sendable {
 /// input in flight. Failure/cancellation deletes only this call's outputs.
 /// Inputs are never deleted, including when they reside in outputDirectory.
 struct AppBatchProcessor: Sendable {
+    /// The app's single photo limit, used by the picker, import, conversion
+    /// and saving. It matches Instagram's 20-item carousel maximum.
     static let maximumImageCount = 20
     private let render: @Sendable (URL, URL, OutputRatio) throws -> Void
 

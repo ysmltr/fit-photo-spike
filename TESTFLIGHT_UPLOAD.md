@@ -24,7 +24,7 @@ Release files:
   required device sizes. App Store distribution requires an app icon.
 
 The existing shared scheme is `FitPhotoSpike`. The app remains iPhone-only with
-marketing version `0.1.0` and stored project build `10.1.0`. Its bundle identifier,
+marketing version `2.0` and stored project build `10.1.0`. Its bundle identifier,
 signing setup and add-only Photos permission are preserved. The app uses the
 system photo picker, renders on-device, and saves new copies only after an
 explicit **Save All** tap. The release driver overrides the stored build number

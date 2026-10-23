@@ -1,6 +1,6 @@
 # Validation
 
-This review copy preserves the standalone app's four ratios, ordered 1–20 selection, preview, explicit Save All, and native Share. The iPhone target and marketing version `0.1.0` remain. The project build stays `10.1.0`; the release driver still calculates a new upload build at run time. No commit, push, workflow run, upload, or submission is part of this handoff.
+This review copy preserves the standalone app's four ratios, ordered 1–20 selection, preview, explicit Save All, and native Share. The iPhone target and marketing version `2.0` remain. The project build stays `10.1.0`; the release driver still calculates a new upload build at run time. No commit, push, workflow run, upload, or submission is part of this handoff.
 
 ## Evidence boundary
 

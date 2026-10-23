@@ -25,4 +25,4 @@ The supported output ratios are 4:5, 3:4, 9:16, and 1:1. Processing is on-device
 - Use current standalone app screenshots and instructions matching the tested build.
 - Describe only photo selection, conversion, preview, explicit Save All, and native Share.
 - Keep privacy answers consistent with no app data collection and selected/add-only photo access; do not claim that third-party sharing destinations never use a network.
-- Keep marketing version `0.1.0`. Use the actual uploaded build chosen by the existing release workflow; the source default is not an upload reservation.
+- Keep marketing version `2.0`. Use the actual uploaded build chosen by the existing release workflow; the source default is not an upload reservation.

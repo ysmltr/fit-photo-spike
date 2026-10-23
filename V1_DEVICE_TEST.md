@@ -21,7 +21,7 @@ Record installed version/build, iPhone model, iOS version, and actual PASS/FAIL/
 | Cancel an initial empty selection | Return to a usable app without conversion, Photos permission request, or new Photos items. | NOT RUN |
 | Replace a selection and cancel/fail during import | Keep the previous selection. Do not mix partial new items into it; retry succeeds. | NOT RUN |
 | Cancel importing/converting a large batch | No partial success or Photos writes. Cancellation settles before files are removed; retry succeeds. | NOT RUN |
-| Unsupported/unreadable item among valid images | Identify the failed batch position. Do not silently omit it or present a partial batch as complete. | NOT RUN |
+| Unsupported/unreadable item among valid images | Import skips it and an alert names its picker position (for example, "Photo 3 couldn't be opened"); the other photos continue. Never omit it silently. | NOT RUN |
 | Deny Save All permission | Explain denial; preserve previews and Share. No full-library access request or false success. | NOT RUN |
 | Grant add-only access later, then retry | Save the whole batch once from retained outputs; originals remain unchanged. | NOT RUN |
 | Repeated Save All taps while busy / after success | No overlapping transactions or duplicate batch from immediate repeated taps. | NOT RUN |

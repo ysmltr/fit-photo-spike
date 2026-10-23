@@ -110,7 +110,7 @@ struct ContentView: View {
         .disabled(model.isBusy)
         .accessibilityLabel(model.inputs.isEmpty ? "Select Photos" : "Preview \(model.inputs.count) photos")
         .accessibilityHint(model.inputs.isEmpty
-            ? "Choose up to 20 photos."
+            ? "Choose up to \(AppBatchProcessor.maximumImageCount) photos."
             : "Converts your selection using the chosen ratio.")
         .padding(.horizontal, 20).padding(.vertical, 12)
         .frame(maxWidth: 680).frame(maxWidth: .infinity)
@@ -154,7 +154,7 @@ struct ContentView: View {
 
     private var results: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("\(model.outputs.count) ready Â· \(model.ratio.title)").font(.headline)
+            Text("\(model.outputs.count) ready · \(model.ratio.title)").font(.headline)
                 .accessibilityAddTraits(.isHeader)
             Text("Review your photos, then save or share the whole batch.").foregroundStyle(.secondary)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 16)], spacing: 16) {
@@ -182,7 +182,7 @@ struct ContentView: View {
                 .buttonStyle(FitPrimaryButtonStyle()).disabled(model.isBusy)
                 .accessibilityLabel("Share all \(model.outputs.count) photos")
             Button { model.saveAll() } label: {
-                Label(model.savedToPhotos ? "Saved to Photos" : model.work == .saving ? "Savingâ€¦" : "Save All",
+                Label(model.savedToPhotos ? "Saved to Photos" : model.work == .saving ? "Saving…" : "Save All",
                       systemImage: model.savedToPhotos ? "checkmark" : "square.and.arrow.down")
                     .frame(maxWidth: .infinity, minHeight: 44)
             }.buttonStyle(.bordered).disabled(model.isBusy || model.savedToPhotos)
@@ -196,11 +196,11 @@ struct ContentView: View {
     private var progress: some View {
         VStack(alignment: .leading, spacing: 12) {
             if model.work == .saving {
-                ProgressView("Saving all photosâ€¦")
+                ProgressView("Saving all photos…")
                 Text("Keep Fit Photos open until saving finishes.").font(.footnote)
             } else {
                 ProgressView(value: Double(model.completed), total: Double(max(1, model.total)))
-                Text(model.isCancelling ? "Cancellingâ€¦" : "\(model.work == .importing ? "Loading" : "Converting") \(min(model.completed + 1, model.total)) of \(model.total)")
+                Text(model.isCancelling ? "Cancelling…" : "\(model.work == .importing ? "Loading" : "Converting") \(min(model.completed + 1, model.total)) of \(model.total)")
                     .font(.headline)
                 Button("Cancel") { model.cancel() }.disabled(model.isCancelling).frame(minHeight: 44)
             }

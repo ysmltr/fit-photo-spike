@@ -43,7 +43,7 @@ enum ImageRenderingError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .unreadableImage: return "The photo could not be read."
-        case .unsupportedFormat: return "Choose JPEG, HEIC, or PNG still images."
+        case .unsupportedFormat: return "Use still photos such as JPEG, HEIC, or PNG."
         case .multipleImages: return "Animated and multiple-frame image files are not supported."
         case .invalidDimensions: return "The photo dimensions or output size are invalid."
         case .invalidOrientation: return "The photo contains an unsupported orientation value."

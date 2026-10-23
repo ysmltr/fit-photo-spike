@@ -101,6 +101,27 @@ struct ImageRenderer: Sendable {
         }
     }
 
+    /// Import-time check using the same format rules as `render`, plus a tiny
+    /// decode, so an unusable photo is skipped before any conversion starts.
+    func canRender(inputURL: URL) -> Bool {
+        autoreleasepool {
+            guard let input = try? readInput(url: inputURL) else { return false }
+            return CGImageSourceCreateThumbnailAtIndex(input.source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceThumbnailMaxPixelSize: 64
+            ] as CFDictionary) != nil
+        }
+    }
+
+    /// Still formats that iOS decodes. GIF stays unsupported because it is
+    /// usually animated. The ImageIO-reported type decides, not the filename.
+    private static func isSupportedStillType(_ identifier: String) -> Bool {
+        let stillTypes = [UTType.jpeg, .heic, .heif, .png, .tiff, .bmp, .webP].map(\.identifier)
+            + ["public.avif"]
+        return stillTypes.contains(identifier)
+            || UTType(identifier)?.conforms(to: .rawImage) == true
+    }
+
     private struct Input {
         let source: CGImageSource
         let width: Int
@@ -114,11 +135,9 @@ struct ImageRenderer: Sendable {
               let sourceType = CGImageSourceGetType(source) else {
             throw ImageRenderingError.unreadableImage
         }
-        let type = sourceType as String
-        // Generic HEIF is a container designation, not proof of HEIC encoding.
-        // The ImageIO-reported content type, not the filename extension, decides.
-        guard [UTType.jpeg.identifier, UTType.heic.identifier, UTType.png.identifier]
-            .contains(type) else {
+        // A file ImageIO reports but cannot decode still fails later as
+        // unreadable; `canRender` catches that case at import time.
+        guard Self.isSupportedStillType(sourceType as String) else {
             throw ImageRenderingError.unsupportedFormat
         }
         guard CGImageSourceGetCount(source) == 1 else {

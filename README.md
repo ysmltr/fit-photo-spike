@@ -18,7 +18,7 @@ Fit Photos is a native SwiftUI iPhone app. Select up to 20 still images, choose 
 | 9:16 | 1080 × 1920 |
 | 1:1 | 1080 × 1080 |
 
-Every output is an opaque JPEG with correct orientation and white padding where needed. Transparent source regions render over white. Supported inputs are JPEG, HEIC, and PNG still images. Animated images and videos are unsupported. The app processes the representation supplied by the picker; it does not restore cropped pixels or preserve motion, depth, HDR, or every source metadata field.
+Every output is an opaque JPEG with correct orientation and white padding where needed. Transparent source regions render over white. Supported inputs are still images that iOS can decode, including JPEG, HEIC/HEIF, PNG, WebP, AVIF, TIFF, BMP, and RAW/DNG. Animated images (including GIF) and videos are unsupported. During import, a photo that can't be loaded or decoded is skipped instead of failing the whole selection; an alert names the skipped picker positions and the remaining photos continue. The photo limit is `AppBatchProcessor.maximumImageCount` (20, Instagram's carousel maximum). The app processes the representation supplied by the picker; it does not restore cropped pixels or preserve motion, depth, HDR, or every source metadata field.
 
 ## Privacy and permissions
 
@@ -36,7 +36,7 @@ Each batch owns `tmp/FitPhotosAppSessions/batch-<UUID>/`. Inputs and outputs rem
 
 ## Project and validation
 
-The existing project and scheme names remain `FitPhotoSpike`. The native target is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`), marketing version `0.1.0`. The stored project build is `10.1.0`; the existing TestFlight workflow calculates the actual release build from GitHub counters and Apple's build records at run time.
+The existing project and scheme names remain `FitPhotoSpike`. The native target is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`), marketing version `2.0`. The stored project build is `10.1.0`; the existing TestFlight workflow calculates the actual release build from GitHub counters and Apple's build records at run time.
 
 From the extracted source root on Windows:
 

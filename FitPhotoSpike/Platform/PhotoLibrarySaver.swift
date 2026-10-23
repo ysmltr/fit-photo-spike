@@ -59,7 +59,7 @@ struct PhotoLibrarySaver {
     }
 
     func save(_ urls: [URL]) async throws {
-        guard (1...20).contains(urls.count), urls.allSatisfy({
+        guard (1...AppBatchProcessor.maximumImageCount).contains(urls.count), urls.allSatisfy({
             $0.isFileURL
                 && (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
                 && FileManager.default.isReadableFile(atPath: $0.path)
