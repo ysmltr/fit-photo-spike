@@ -5,6 +5,26 @@
 	};
 	objectVersion = 56;
 	objects = {
+		76DBAB3E0D1637092278AFDB = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "FeedbackTests.swift";
+			sourceTree = "<group>";
+		};
+		3D7D84BFC3B8601C73E7C468 = {
+			isa = "PBXBuildFile";
+			fileRef = "76DBAB3E0D1637092278AFDB";
+		};
+		B7D21602CFF635404DE69CC3 = {
+			isa = "PBXFileReference";
+			lastKnownFileType = "sourcecode.swift";
+			path = "FeedbackView.swift";
+			sourceTree = "<group>";
+		};
+		FE7B8A088EA506D7D0D7462B = {
+			isa = "PBXBuildFile";
+			fileRef = "B7D21602CFF635404DE69CC3";
+		};
 		B8DBAB355E08C0B85A65AE78 = {
 			isa = "PBXFileReference";
 			lastKnownFileType = "sourcecode.swift";
@@ -226,6 +246,7 @@
 				"2F1BA13667F77431D4D9282E",
 				"600BF83EA6371860ABC90062",
 				"A15CD61DC8DAB5595AB56A4A",
+				"B7D21602CFF635404DE69CC3",
 			);
 			path = "Views";
 			sourceTree = "<group>";
@@ -265,6 +286,7 @@
 				"5068000FDB902F52F2D1F991",
 				"14D3E2B1F5AF78A0B46B8292",
 				"B8DBAB355E08C0B85A65AE78",
+				"76DBAB3E0D1637092278AFDB",
 			);
 			path = "FitPhotoSpikeTests";
 			sourceTree = "<group>";
@@ -328,6 +350,7 @@
 				"3ED6F74DC1C9070AE0893F21",
 				"27D44F69172102C0F9EECF1A",
 				"D858351B8D3F0A6D8087294B",
+				"FE7B8A088EA506D7D0D7462B",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -360,6 +383,7 @@
 				"F36C7D489198B84C3DDC3AED",
 				"EE31113832681DFBFFD95A02",
 				"5B51EFB0F4702BEAA91F5FE8",
+				"3D7D84BFC3B8601C73E7C468",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,10 +1,12 @@
 import Foundation
 
-/// Remembers the last size and background between launches. Only these two
-/// small settings are stored on the device, never photos or file paths.
+/// Remembers the last size and background between launches, and how many
+/// batches were saved (to time the App Store rating prompt). Only these
+/// small values are stored on the device, never photos or file paths.
 struct EditorPreferences {
     private static let ratioKey = "editor.lastRatio"
     private static let backgroundKey = "editor.lastBackground"
+    private static let savesKey = "editor.successfulSaves"
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -28,5 +30,10 @@ struct EditorPreferences {
             guard let data = try? JSONEncoder().encode(newValue) else { return }
             defaults.set(data, forKey: Self.backgroundKey)
         }
+    }
+
+    var successfulSaves: Int {
+        get { defaults.integer(forKey: Self.savesKey) }
+        nonmutating set { defaults.set(newValue, forKey: Self.savesKey) }
     }
 }

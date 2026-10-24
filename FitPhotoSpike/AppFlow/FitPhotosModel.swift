@@ -37,6 +37,8 @@ final class FitPhotosModel: ObservableObject {
     @Published private(set) var savedToPhotos = false
     /// Once the editor has opened for a batch, the size screen returns to it.
     @Published private(set) var hasOpenedEditor = false
+    /// Goes up when a save is a good moment to ask for an App Store rating.
+    @Published private(set) var reviewRequests = 0
     @Published var message: FitPhotosMessage?
 
     private var files: AppSessionFiles?
@@ -279,6 +281,7 @@ final class FitPhotosModel: ObservableObject {
             do {
                 try await PhotoLibrarySaver().save(urls)
                 self?.savedToPhotos = true
+                self?.countSuccessfulSave()
             } catch {
                 let saveError = error as? PhotoLibrarySaveError
                 self?.message = FitPhotosMessage(title: "Unable to save photos",
@@ -306,6 +309,14 @@ final class FitPhotosModel: ObservableObject {
         hasOpenedEditor = false
         message = nil
         screen = .start
+    }
+
+    /// Asks after the 3rd and 10th saved batch. iOS decides whether the
+    /// prompt actually appears and limits how often.
+    private func countSuccessfulSave() {
+        let saves = preferences.successfulSaves + 1
+        preferences.successfulSaves = saves
+        if saves == 3 || saves == 10 { reviewRequests += 1 }
     }
 
     private func clearOutputs() {

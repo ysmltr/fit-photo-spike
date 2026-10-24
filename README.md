@@ -34,7 +34,8 @@ The look is called *Light Table*: a cool, quiet surface (`Theme.table`) so the p
 - **Save all** requests add-only authorization and creates new Photos items only after an explicit tap. Originals are never replaced, edited, or deleted. Nothing is saved automatically.
 - **Share** passes the converted files to the user's chosen destination. Destination apps decide which formats and batch sizes they support and may use their own network services.
 - An iCloud-only source may need to download through Apple's picker. Download test images first when checking offline operation.
-- The only thing stored between launches is the last size and background choice (`EditorPreferences`, in `UserDefaults`), declared in `PrivacyInfo.xcprivacy`.
+- The only things stored between launches are the last size and background choice and a count of saved batches (`EditorPreferences`, in `UserDefaults`), declared in `PrivacyInfo.xcprivacy`.
+- **Feedback** (start screen) opens the user's own email app with a draft to the support address, including the app version, iOS version and device model; nothing is sent automatically. Rating and sharing links appear once `FeedbackLinks.appStoreID` is set. After the 3rd and 10th saved batch the app asks iOS for the standard App Store rating prompt, which iOS may or may not show.
 
 ## Processing and file lifetime
 

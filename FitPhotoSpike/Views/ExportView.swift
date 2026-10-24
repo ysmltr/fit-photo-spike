@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 /// Renders the batch at full size, then saves every photo to the library or
@@ -7,6 +8,7 @@ struct ExportView: View {
     let onNewBatch: () -> Void
     @State private var showsShare = false
     @State private var confirmsNewBatch = false
+    @Environment(\.requestReview) private var requestReview
 
     private static let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
 
@@ -57,6 +59,13 @@ struct ExportView: View {
                  : "These photos aren't saved yet. Save or share them first if you want to keep them.")
         }
         .sensoryFeedback(.success, trigger: model.savedToPhotos) { _, saved in saved }
+        .onChange(of: model.reviewRequests) { _, _ in
+            // Let the saved state and its haptic land first.
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.2))
+                requestReview()
+            }
+        }
     }
 
     private var title: String {

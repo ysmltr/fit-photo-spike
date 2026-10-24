@@ -1,33 +1,34 @@
 import SwiftUI
 
+/// The welcome screen: what the app does and one action.
 struct StartView: View {
     let isBusy: Bool
     let onChoose: () -> Void
-    @State private var showsAbout = false
+    @State private var showsFeedback = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("Fit Photos").font(.fitDisplay(.title3))
                 Spacer()
-                Button { showsAbout = true } label: {
-                    Image(systemName: "info.circle")
-                        .font(.title3)
-                        .frame(width: 44, height: 44)
-                }
-                .foregroundStyle(Theme.ink)
-                .accessibilityLabel("About Fit Photos")
+                Button("Feedback") { showsFeedback = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(minHeight: 44)
             }
             .padding(.top, 8)
 
+            Spacer(minLength: 12)
             StartIllustration()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .frame(height: 250)
+            Spacer(minLength: 20)
 
-            VStack(alignment: .leading, spacing: 12) {
-                Text("The whole photo,\nin the right frame.")
-                    .font(.fitDisplay(.largeTitle))
-                    .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Your whole photo,\nany frame you want.")
+                    .font(.fitDisplay(.title))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
                     .accessibilityAddTraits(.isHeader)
                 Text("Choose up to \(AppBatchProcessor.maximumImageCount) photos, pick an Instagram size, and save them all at once.")
                     .font(.body)
@@ -40,19 +41,12 @@ struct StartView: View {
             }
             .buttonStyle(InkButtonStyle())
             .disabled(isBusy)
-            .padding(.top, 22)
-
-            Text("Free · No account · Photos stay on your iPhone")
-                .font(.fitMono(.caption2))
-                .foregroundStyle(Theme.inkQuiet)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 12)
+            .padding(.top, 24)
         }
         .padding(.horizontal, 24)
-        .padding(.bottom, 12)
+        .padding(.bottom, 16)
         .foregroundStyle(Theme.ink)
-        .sheet(isPresented: $showsAbout) { AboutView() }
+        .sheet(isPresented: $showsFeedback) { FeedbackView() }
     }
 }
 
@@ -179,52 +173,5 @@ private struct PlantScene: View {
                     .position(x: w * 0.5, y: h * 0.87)
             }
         }
-    }
-}
-
-struct AboutView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    fact("Your photos stay yours",
-                         "Fit Photos only sees the photos you choose. Everything happens on your iPhone; nothing is uploaded.")
-                    fact("Originals stay untouched",
-                         "Saving adds new copies to your library. Your original photos are never changed or deleted.")
-                    fact("Free, for real",
-                         "No account, no ads, no subscriptions and no locked features.")
-                    Text("Version \(version)")
-                        .font(.fitMono(.caption))
-                        .foregroundStyle(Theme.inkQuiet)
-                }
-                .padding(24)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .background(Theme.table.ignoresSafeArea())
-            .navigationTitle("About")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    private func fact(_ title: String, _ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.headline)
-            Text(text)
-                .font(.body)
-                .foregroundStyle(Theme.inkQuiet)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private var version: String {
-        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
-        return "\(short) (\(build))"
     }
 }
