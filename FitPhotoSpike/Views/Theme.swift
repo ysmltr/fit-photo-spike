@@ -14,6 +14,8 @@ enum Theme {
     static let marker = adaptive(light: 0xD92D20, dark: 0xFF5A4E)
     /// Text and icons on an `ink` fill.
     static let onInk = adaptive(light: 0xFFFFFF, dark: 0x101113)
+    /// The light that sweeps across a loading placeholder.
+    static let sheen = adaptive(light: 0xFFFFFF, dark: 0x3A3E44)
     static let shadow = Color.black.opacity(0.16)
 
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
@@ -111,6 +113,35 @@ extension View {
                 MarkerRingMark(lineWidth: lineWidth).padding(inset)
             }
         }
+    }
+}
+
+/// Stands in for a photo that is still loading, such as one downloading
+/// from iCloud on a slow connection: a soft light sweeps across it, so the
+/// app never looks frozen. Still when Reduce Motion is on.
+struct LoadingPlaceholder: View {
+    private static let period: Double = 1.4
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { context in
+            GeometryReader { proxy in
+                let progress = context.date.timeIntervalSinceReferenceDate
+                    .truncatingRemainder(dividingBy: LoadingPlaceholder.period) / LoadingPlaceholder.period
+                let width = proxy.size.width
+                Theme.well
+                    .overlay {
+                        if !reduceMotion {
+                            LinearGradient(colors: [.clear, Theme.sheen.opacity(0.7), .clear],
+                                           startPoint: .leading, endPoint: .trailing)
+                                .frame(width: width * 0.6)
+                                .offset(x: (CGFloat(progress) * 2 - 1) * width * 0.8)
+                        }
+                    }
+                    .clipped()
+            }
+        }
+        .accessibilityLabel("Loading")
     }
 }
 

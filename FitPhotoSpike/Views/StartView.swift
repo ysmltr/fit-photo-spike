@@ -25,11 +25,7 @@ struct StartView: View {
             Spacer(minLength: 20)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Your whole photo,\nany frame you want.")
-                    .font(.fitDisplay(.title))
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.75)
-                    .accessibilityAddTraits(.isHeader)
+                headline
                 Text("Choose up to \(AppBatchProcessor.maximumImageCount) photos, pick an Instagram size, and save them all at once.")
                     .font(.body)
                     .foregroundStyle(Theme.inkQuiet)
@@ -47,6 +43,23 @@ struct StartView: View {
         .padding(.bottom, 16)
         .foregroundStyle(Theme.ink)
         .sheet(isPresented: $showsFeedback) { FeedbackView() }
+    }
+
+    /// The largest size at which each line fits whole. iOS cuts multi-line
+    /// text short instead of shrinking it, so the size is chosen here.
+    private var headline: some View {
+        ViewThatFits(in: .horizontal) {
+            headlineText(.title).fixedSize()
+            headlineText(.title2).fixedSize()
+            headlineText(.title3).fixedSize()
+            headlineText(.title3).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func headlineText(_ style: Font.TextStyle) -> some View {
+        Text("Your whole photo,\nany frame you want.")
+            .font(.fitDisplay(style))
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

@@ -21,6 +21,11 @@ struct CanvasArtwork: View {
                         .resizable()
                         .frame(width: rect.width * scale, height: rect.height * scale)
                         .offset(x: rect.minX * scale, y: rect.minY * scale)
+                } else {
+                    // The photo's exact shape and place while it loads.
+                    LoadingPlaceholder()
+                        .frame(width: rect.width * scale, height: rect.height * scale)
+                        .offset(x: rect.minX * scale, y: rect.minY * scale)
                 }
             }
             .frame(width: size.width, height: size.height, alignment: .topLeading)
@@ -42,7 +47,7 @@ struct CanvasArtwork: View {
                     .clipped()
                     .blur(radius: min(size.width, size.height) * CanvasBackground.blurFraction, opaque: true)
             } else {
-                Rectangle().fill(Theme.well)
+                LoadingPlaceholder()
             }
         }
     }

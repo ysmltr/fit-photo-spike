@@ -60,8 +60,7 @@ struct FileThumbnail: View {
                 if let image {
                     Image(uiImage: image).resizable().scaledToFit()
                 } else {
-                    Image(systemName: "photo").font(.title3).foregroundStyle(Theme.inkQuiet)
-                        .accessibilityLabel("Preview unavailable")
+                    LoadingPlaceholder()
                 }
             }
         }

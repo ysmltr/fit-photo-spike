@@ -75,9 +75,10 @@ struct SizePickerView: View {
             ForEach(Array(model.inputs.prefix(7).enumerated()), id: \.offset) { _, url in
                 ThumbnailImage(url: url, maximumPixelSize: 120) { image in
                     ZStack {
-                        Theme.well
                         if let image {
                             Image(uiImage: image).resizable().scaledToFill()
+                        } else {
+                            LoadingPlaceholder()
                         }
                     }
                 }

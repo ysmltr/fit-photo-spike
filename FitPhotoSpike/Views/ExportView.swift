@@ -18,6 +18,8 @@ struct ExportView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
                     .font(.fitDisplay(.title))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .contentTransition(.numericText())
                     .accessibilityAddTraits(.isHeader)
                 Text("\(model.ratio.title) · \(model.ratio.width) × \(model.ratio.height) · JPEG, best quality")
